@@ -1,0 +1,4 @@
+5 X = 5
+10 PRINT "no"
+15 X = X - 1
+20 IF X > 0 THEN  GOTO 10

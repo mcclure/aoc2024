@@ -1,0 +1,6 @@
+"IDE"
+https://paleotronic.com/applesoft/
+
+To run
+AppleWin 1.30.20.0 https://github.com/AppleWin/AppleWin
+Load ProDOS 2.4 in disk drive 1 https://prodos8.com/releases/prodos-24/
