@@ -1,0 +1,9 @@
+"IDE"
+https://paleotronic.com/applesoft/
+
+To run
+AppleWin 1.30.20.0 https://github.com/AppleWin/AppleWin
+Recommend video mode: Composite Idealized, 50% Scan lines: off, Emulation Speed Control: Fastest
+Load CYAN1.dsk in disk drive 1 and type:
+] LOAD PUZZLE
+] RUN
