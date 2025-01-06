@@ -10,6 +10,8 @@ FALSE partial !
 .S
 ;
 
+: run
+
 BEGIN ( Line ) 
 	KEY
 	DUP 0> IF ( SKIP IF EOF )
@@ -30,3 +32,7 @@ BEGIN ( Line )
 0< UNTIL
 
 line-done
+
+;
+
+run
