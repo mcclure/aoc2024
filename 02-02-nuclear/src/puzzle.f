@@ -13,44 +13,50 @@ DUP 0> IF DROP -1 ELSE
 THEN THEN
 ;
 
-VARIABLE line-done/incr ( Is the line increasing or decreasing? )
-VARIABLE line-done/safe ( Is the current line safe? )
+VARIABLE report-pass/incr ( Is the line increasing or decreasing? )
+VARIABLE report-pass/safe ( Is the current line safe? )
+
+: report-pass ( Clear line and leave behind safe value )
+
+0 report-pass/incr !    ( Current increment value unknown )
+TRUE report-pass/safe ! ( Assume safe until proven otherwise )
+
+( The conditions for safe are: [[All increasing OR all decreasing] AND [difference between 1 and 3 inclusive]] )
+DEPTH 1 > IF BEGIN
+	report-pass/safe @ IF ( Distance criteria )
+		2DUP - ABS
+		DUP 4 < AND ( Hack: AND compares the condition with the *difference*! )
+			report-pass/safe !
+	THEN
+
+	report-pass/safe @ IF ( Incr/decr criteria ) ( Note if we got here, the distance is not equal to 0 )
+		2DUP test
+		report-pass/incr @
+		DUP 0 = IF
+			DROP
+			report-pass/incr !
+		ELSE
+			=
+			report-pass/safe !
+		THEN
+	THEN
+
+	DROP
+DEPTH 2 < UNTIL THEN
+
+DROP ( We know for a fact there is exactly one left )
+
+report-pass/safe @
+;
 
 : line-done ( Clear line and save results in 'safe' )
 .S
 
 DEPTH 0> IF ( Entirely skip blank lines )
-
-	0 line-done/incr !    ( Current increment value unknown )
-	TRUE line-done/safe ! ( Assume safe until proven otherwise )
-
-	( The conditions for safe are: [[All increasing OR all decreasing] AND [difference between 1 and 3 inclusive]] )
-	DEPTH 1 > IF BEGIN
-		line-done/safe @ IF ( Distance criteria )
-			2DUP - ABS
-			DUP 4 < AND ( Hack: AND compares the condition with the *difference*! )
-				line-done/safe ! 
-		THEN
-
-		line-done/safe @ IF ( Incr/decr criteria ) ( Note if we got here, the distance is not equal to 0 )
-			2DUP test
-			line-done/incr @
-			DUP 0 = IF
-				DROP
-				line-done/incr !
-			ELSE
-				=
-				line-done/safe !
-			THEN
-		THEN
-
-		DROP
-	DEPTH 2 < UNTIL THEN
-
-	DROP ( We know for a fact there is exactly one left )
+	report-pass
 
 	( Record result )
-	line-done/safe @ IF
+	IF
 		." SAFE" CR
 		safe @ 1 + safe !
 	THEN
@@ -77,7 +83,7 @@ BEGIN ( Line )
 				+ ( Combine digits )
 				ROT DROP ( Delete our previously PICKed value )
 			ELSE
-				TRUE partial ! 
+				TRUE partial !
 			THEN
 			SWAP ( Bring UNTIL operator back to top )
 		THEN THEN THEN
