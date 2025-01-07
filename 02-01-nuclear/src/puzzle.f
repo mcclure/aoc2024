@@ -61,7 +61,6 @@ FALSE partial !
 ;
 
 : run
-
 BEGIN ( Line )
 	( .S )
 	KEY
@@ -74,8 +73,9 @@ BEGIN ( Line )
 			DUP ( Need this on the stack for UNTIL )
 			[CHAR] 0 - ( Shift out of ASCII )
 			partial @ IF ( This is an incomplete character )
-				OVER 10 * ( Digit shift value one down )
+				2 PICK 10 * ( Digit shift value one down )
 				+ ( Combine digits )
+				ROT DROP ( Delete our previously PICKed value )
 			ELSE
 				TRUE partial ! 
 			THEN
