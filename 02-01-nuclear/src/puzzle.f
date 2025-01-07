@@ -14,15 +14,15 @@ THEN THEN
 ;
 
 VARIABLE line-done/incr ( Is the line increasing or decreasing? )
-VARIABLE line-done/safe ( Previous number in line )
+VARIABLE line-done/safe ( Is the current line safe? )
 
 : line-done ( Clear line and save results in 'safe' )
 .S
 
 DEPTH 0> IF ( Entirely skip blank lines )
 
-	0 line-done/incr !
-	TRUE line-done/safe !
+	0 line-done/incr !    ( Current increment value unknown )
+	TRUE line-done/safe ! ( Assume safe until proven otherwise )
 
 	( The conditions for safe are: [[All increasing OR all decreasing] AND [difference between 1 and 3 inclusive]] )
 	DEPTH 1 > IF BEGIN
