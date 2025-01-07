@@ -8,28 +8,35 @@ FALSE partial !
 
 : line-done
 .S
+( TODO: RUN ACTUAL PROGRAM HERE )
+DEPTH 0> IF BEGIN DROP DEPTH 0 = UNTIL THEN ( CLEAR STACK )
+FALSE partial !
 ;
 
 : run
 
-BEGIN ( Line ) 
+BEGIN ( Line )
+	( .S )
 	KEY
-	DUP 0> IF ( SKIP IF EOF )
-		DUP DUP DUP 9 <> 13 <> 20 <> AND AND IF partial TRUE ! ELSE ( Reset character parser on TAB, CR, space )
-		DUP 12 = IF line-done ELSE ( NEWLINE )
-		DUP DUP CHAR 0 < CHAR 9 > OR IF ( Not a number )
-			EMIT ." : Unknown character" ABORT
+	DUP 0> IF ( SKIP IF NULL/EOF )
+		DUP DUP DUP 9 = SWAP 13 = OR SWAP 32 = OR IF FALSE partial ! ELSE ( Reset character parser on TAB, CR, space )
+		DUP 10 = IF DROP line-done 10 ELSE ( NEWLINE -- notice ugly stack jiggling )
+		DUP DUP [CHAR] 0 < SWAP [CHAR] 9 > OR IF ( Not a number )
+			EMIT ." : Unknown character" CR ABORT
 		ELSE
-			CHAR 0 - ( Shift out of ASCII )
+( CHAR 'B' EMIT )
+			DUP ( Need this on the stack for UNTIL )
+			[CHAR] 0 - ( Shift out of ASCII )
 			partial @ IF ( This is an incomplete character )
-				SWAP 10 * ( Digit shift value one down )
+				OVER 10 * ( Digit shift value one down )
 				+ ( Combine digits )
 			ELSE
 				TRUE partial ! 
 			THEN
+			SWAP ( Bring UNTIL operator back to top )
 		THEN THEN THEN
 	THEN
-0< UNTIL
+0> NOT UNTIL
 
 line-done
 
