@@ -127,7 +127,7 @@ DEPTH 0> IF ( Entirely skip blank lines )
 		ELSE  ( Keep trying )
 			( We increment in an odd place and do an extra test, )
 			( because we need to increment N times but test N+1 times. )
-			line-done/idx @ DUP 1+ line-done/idx ! line-done/depth @ ( Stack top: idx depth )
+			line-done/idx @ 1+ DUP line-done/idx ! line-done/depth @ ( Stack top: idx depth )
 
 			< IF
 				line-done/stack-backup line-done/idx @ stack-restore-forgetful
