@@ -6,4 +6,4 @@ Explanation: https://mastodon.social/@mcc/113743302074837530
 ---
 
 1. Lists: AppleSoft BASIC
-2. Nuclear: Forth
+2. Nuclear: Forth (2TL 218)

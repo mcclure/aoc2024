@@ -108,10 +108,10 @@ VARIABLE line-done/idx
 VARIABLE line-done/stack-backup
 
 : line-done ( Clear line, check safety up to N+1 times with "ignorance", and store results by incrementing 'safe' )
-." REPORT " .S CR
+CR ." REPORT " .S
 
 DEPTH 0> IF ( Entirely skip blank lines )
-	DEPTH line-done/depth SWAP !        ( Save depth )
+	DEPTH line-done/depth !        ( Save depth )
 	-1 line-done/idx !                  ( Initialize counter )
 	line-done/stack-backup stack-clone  ( Save clone )
 
@@ -132,14 +132,14 @@ DEPTH 0> IF ( Entirely skip blank lines )
 			< IF
 				line-done/stack-backup line-done/idx @ stack-restore-forgetful
 
-				." RETRYING " .S CR
+				." RETRYING " .S
 
 				report-pass
 			THEN
 		THEN
 
 		line-done/idx @ line-done/depth @ ( Prep test )
-	< UNTIL
+	< NOT UNTIL
 THEN
 
 FALSE partial ! ( Because a line is done )
