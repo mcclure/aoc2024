@@ -6,6 +6,10 @@ VARIABLE safe    ( How many safe lines seen? )
 FALSE partial !
 0 safe !
 
+: 2ROT
+ROT ROT
+;
+
 : test ( Perl <=>. Consumes two arguments, places -1, 0 or 1 on the stack depending on equality. )
 -
 DUP 0> IF DROP -1 ELSE
@@ -48,6 +52,41 @@ DROP ( We know for a fact there is exactly one left )
 
 report-pass/safe @
 ;
+
+( Note: Stack backups store length as first element, rest is stack backward )
+( Note: We are assuming "the memory-allocation word set" )
+( Note: clone/restore assume a stack of size at least 1 )
+
+: stack-clone ( Pop one element off stack for storage location, copy rest of stack to that location )
+	DEPTH SWAP OVER ( So top of stack now contains: storage depth depth )
+	CELLS ALLOCATE ( Notice the depth is stacklength + 1 )
+	0> IF ." Size " DROP . ." : Allocation failure" CR ABORT THEN
+	( Stack top: depth storage pointer )
+	DUP 3 PICK 1 - SWAP ! ( Write stacklength [depth - 1] to start of array )
+	SWAP 2DUP ! ( Write pointer to storage )
+	DROP SWAP DROP ( Stack top: pointer )
+
+	DUP @ 0 ( Stack top: pointer stacklength counter )
+	BEGIN
+		DUP 3 + ( Stack top: pointer stacklength counter counter+3 )
+		( BUG: Notice wedged in "1 +". It would be better if we had depth on the stack and we wouldn't need this. )
+		PICK 3 PICK 2 PICK 1 + CELLS + ! ( assign to *pointer )
+		1+ ( Increment counter )
+	2DUP = UNTIL
+	DROP DROP DROP
+;
+
+: stack-restore ( Pop one element off stack for storage location, push items at that backup onto stack )
+	@ DUP @ 0 ( Stack top: pointer depth counter )
+	BEGIN
+		2 PICK OVER 1 + CELLS + @ ( Stack top: pointer depth counter newdata )
+		3 ROLL 3 ROLL 3 ROLL ( Stack top: newdata pointer depth counter )
+		1+ ( Increment counter )
+	2DUP = UNTIL
+	DROP DROP DROP
+;
+
+VARIABLE line-done/stack-backup
 
 : line-done ( Clear line and save results in 'safe' )
 .S
