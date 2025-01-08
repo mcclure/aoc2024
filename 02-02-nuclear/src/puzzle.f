@@ -20,7 +20,7 @@ THEN THEN
 VARIABLE report-pass/incr ( Is the line increasing or decreasing? )
 VARIABLE report-pass/safe ( Is the current line safe? )
 
-: report-pass ( Clear line and leave behind safe value )
+: report-pass ( Clear line, check for "safety" and leave behind safe value on stack )
 
 0 report-pass/incr !    ( Current increment value unknown )
 TRUE report-pass/safe ! ( Assume safe until proven otherwise )
@@ -86,23 +86,63 @@ report-pass/safe @
 	DROP DROP
 ;
 
+VARIABLE stack-restore-forgetful/ignore
+
+( Note: "ignore index" counts from the back rather than front. This is not as desired, but is unimportant for this application )
+: stack-restore-forgetful ( Pop one element off stack for "ignore index", one for storage location, push items at that backup [minus ignore index] onto stack )
+	1+ stack-restore-forgetful/ignore ! ( adjust ignore index for size in cell 0 )
+	@ DUP @ ( Stack top: pointer index . index will count down to 0 )
+	BEGIN
+		dup stack-restore-forgetful/ignore @ ( Stack top: pointer index index ignore )
+		<> IF
+			2DUP CELLS + @ ( Stack top: pointer index newdata )
+			ROT ROT ( Stack top: newdata pointer index )
+		THEN
+		1 - ( Increment counter )
+	DUP 0= UNTIL
+	DROP DROP
+;
+
+VARIABLE line-done/depth
+VARIABLE line-done/idx
 VARIABLE line-done/stack-backup
 
-: line-done ( Clear line and save results in 'safe' )
-.S
+: line-done ( Clear line, check safety up to N+1 times with "ignorance", and store results by incrementing 'safe' )
+." REPORT " .S CR
 
 DEPTH 0> IF ( Entirely skip blank lines )
+	DEPTH line-done/depth SWAP !        ( Save depth )
+	-1 line-done/idx !                  ( Initialize counter )
+	line-done/stack-backup stack-clone  ( Save clone )
+
 	report-pass
 
-	( Record result )
-	IF
-		." SAFE" CR
-		safe @ 1 + safe !
-	THEN
+	( Stack top: pass-safe )
+	BEGIN
+		IF    ( Success! )
+			." SAFE" CR
+			safe @ 1 + safe !
 
+			line-done/depth @ line-done/idx ! ( Jump to end )
+		ELSE  ( Keep trying )
+			( We increment in an odd place and do an extra test, )
+			( because we need to increment N times but test N+1 times. )
+			line-done/idx @ DUP 1+ line-done/idx ! line-done/depth @ ( Stack top: idx depth )
+
+			< IF
+				line-done/stack-backup line-done/idx @ stack-restore-forgetful
+
+				." RETRYING " .S CR
+
+				report-pass
+			THEN
+		THEN
+
+		line-done/idx @ line-done/depth @ ( Prep test )
+	< UNTIL
 THEN
 
-FALSE partial !
+FALSE partial ! ( Because a line is done )
 ;
 
 : run
