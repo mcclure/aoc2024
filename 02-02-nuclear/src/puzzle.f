@@ -77,13 +77,13 @@ report-pass/safe @
 ;
 
 : stack-restore ( Pop one element off stack for storage location, push items at that backup onto stack )
-	@ DUP @ 0 ( Stack top: pointer depth counter )
+	@ DUP @ ( Stack top: pointer index . index will count down to 0 )
 	BEGIN
-		2 PICK OVER 1 + CELLS + @ ( Stack top: pointer depth counter newdata )
-		3 ROLL 3 ROLL 3 ROLL ( Stack top: newdata pointer depth counter )
-		1+ ( Increment counter )
-	2DUP = UNTIL
-	DROP DROP DROP
+		2DUP CELLS + @ ( Stack top: pointer index newdata )
+		ROT ROT ( Stack top: newdata pointer index )
+		1 - ( Increment counter )
+	DUP 0= UNTIL
+	DROP DROP
 ;
 
 VARIABLE line-done/stack-backup
