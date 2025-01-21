@@ -1,7 +1,7 @@
 # PRINT 69
 
-gcc src/number.s -o run && ./run
+gcc -g src/number.s -o run && ./run
 
 # PRINT 137 (from .data)
 
-gcc src/number-echo.s -o run && ./run
+gcc -g src/number-echo.s -o run && ./run

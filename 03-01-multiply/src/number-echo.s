@@ -1,4 +1,4 @@
-# Writes the number 69 to the console using only calls. Runs on 64-bit Linux only.
+# Writes the number 49 (ASCII '1') to stdout. Runs on 64-bit Linux only.
 
     .global main
 
@@ -35,7 +35,14 @@ _print: # ARGUMENTS: %esi
     ret
 
 main:
-    mov  $69, %esi           # "Writing to ESI zero extends to RSI." (?)
+    mov $0, %esi
+    mov $0, %r10
+    mov input, %r10 # Load pointer
+
+    mov $0, %rax     # Clear high bits of a
+    mov 0(%r10), %al # Dereference r10 into a
+    mov %eax, %esi   # Resize a into s
+
     call _print
 
     jmp _exit
