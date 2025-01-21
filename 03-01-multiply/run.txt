@@ -1,0 +1,3 @@
+# PRINT 69
+
+gcc src/number.s -o run && ./run
