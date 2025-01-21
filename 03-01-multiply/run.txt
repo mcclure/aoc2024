@@ -5,3 +5,11 @@ gcc -g src/number.s -o run && ./run
 # PRINT 137 (from .data)
 
 gcc -g src/number-echo.s -o run && ./run
+
+# SOLVE SAMPLE
+
+(cat data/sample.161.txt | perl tools/convert.pl > src/sample.s) && gcc -g src/sample.s -o run && ./run
+
+# SOLVE PUZZLE
+
+(cat data/puzzle.txt | perl tools/convert.pl > src/puzzle.s) && gcc -g src/puzzle.s -o run && ./run
