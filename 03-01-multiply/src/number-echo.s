@@ -32,8 +32,10 @@ _print: # ARGUMENTS: %esi
     call printf
     pop %rbx
 
-    jmp _exit
+    ret
 
 main:
     mov  $69, %esi           # "Writing to ESI zero extends to RSI." (?)
-    jmp _print
+    call _print
+
+    jmp _exit
