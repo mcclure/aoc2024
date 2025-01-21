@@ -1,0 +1,11 @@
+examples
+https://cs.lmu.edu/~ray/notes/gasexamples/
+
+tutorial
+https://www.vikaskumar.org/amd64/
+
+registers
+https://www.cs.tufts.edu/comp/40-2011f/handouts/amd64.pdf
+
+reference
+https://www.felixcloutier.com/x86/

@@ -9,9 +9,7 @@
 
 printf_arg: .asciz "%d\n"
 
-input: .asciz "\
-137\
-"
+input: .asciz "137"
 
     .text
 
@@ -37,7 +35,7 @@ _print: # ARGUMENTS: %esi
 main:
     mov $0, %esi
     mov $0, %r10
-    mov input, %r10 # Load pointer
+    lea input(%rip), %r10
 
     mov $0, %rax     # Clear high bits of a
     mov 0(%r10), %al # Dereference r10 into a
