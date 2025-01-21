@@ -7,7 +7,7 @@
 
     .data
 
-printf_arg: .asciz "%d\n"
+printf_arg: .asciz "%ld\n"          # See test/prid.c
 
 input: .asciz "137"
 
@@ -34,12 +34,28 @@ _print: # ARGUMENTS: %esi
 
 main:
     mov $0, %esi
-    mov $0, %r10
     lea input(%rip), %r10
 
-    mov $0, %rax     # Clear high bits of a
-    mov 0(%r10), %al # Dereference r10 into a
-    mov %eax, %esi   # Resize a into s
+    mov $0, %rbx     # Clear b (character temporary)
+    mov $0, %rax     # Clear a (accumulator)
+
+_main_loop:
+
+    mov 0(%r10), %bl # Dereference r10 into a
+    cmp $0, %bl      # a == 0?
+    je _main_loop_done # then branch
+    sub $48, %bl     # Assume ASCII number
+    
+    mov $10, %rcx    # Digit-shift accumulator a
+    mul %rcx
+
+    add %rbx, %rax   # Sum to accumulator a
+    add $1, %r10     # Iterate pointer
+    jmp _main_loop   # Repeat
+    
+_main_loop_done:
+
+    mov %rax, %rsi   # Move b into s 
 
     call _print
 
