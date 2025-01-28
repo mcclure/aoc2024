@@ -5,3 +5,5 @@
 
 rm -f 03-01-multiply/run
 rm -f 03-02-multiply/run
+rm -f 04-01-wordsearch/program
+rm -f 04-02-wordsearch/program

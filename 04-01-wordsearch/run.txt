@@ -1,0 +1,5 @@
+# Hello world
+gfortran src/hello.f90 -o program && ./program
+
+# Puzzle
+gfortran src/puzzle.f90 -o program

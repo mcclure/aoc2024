@@ -8,3 +8,4 @@ Explanation: https://mastodon.social/@mcc/113743302074837530
 1. Lists: AppleSoft BASIC
 2. Nuclear: Forth [2TL 218]
 3. Multiply: x86_64 assembly, gas assembler
+4. Word search: FORTRAN
