@@ -2,4 +2,4 @@
 gfortran src/hello.f90 -o program && ./program
 
 # Puzzle
-gfortran src/puzzle.f90 -o program
+gfortran src/puzzle.f90 -std=f2023 -o program && ./program data/puzzle.txt
