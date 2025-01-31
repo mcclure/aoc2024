@@ -16,7 +16,7 @@ program puzzle
     integer, parameter :: ascii = selected_char_kind("ascii ") ! FORTRAN "newline" function too vague for my comfort
     character(len=1), parameter :: cr = char(13, ascii), lf = char(10, ascii)
     logical :: file_done = .false., line_done = .false.
-    integer :: line_length = 0, current_line_length = 0, rows = 0, row_at = 1, col_at = 1
+    integer :: line_length = 0, current_line_length = 0, rows = 0, row_at = 1, col_at = 1, longer_axis
 
     if (1 /= command_argument_count()) then
         write(error_unit,*) "Expected 1 argument (filename)" ! write to stderr
@@ -90,6 +90,7 @@ program puzzle
 
     print *, "MAT", rows, line_length
     allocate(board (line_length, rows)) ! FORTRAN is column-major but this is not as I expect
+    longer_axis = max(rows, line_length)
 
     ! Reset file
     ! AS FAR AS I KNOW THIS SHOULD WORK, BUT IT DOES NOT
@@ -132,6 +133,8 @@ program puzzle
     ! Okay ugh actually do the thing
     ! Note reuse: row_at, col_at
 
+    ! "Euclidian"
+
     do row_at = 1,rows
         ! Search cols forward
         goal_at = 1
@@ -160,9 +163,48 @@ program puzzle
         end do
     end do
 
-    print *,matches
+    ! Diagonal
+    ! Checks more cells than it strictly needs to
+
+    do row_at = -rows+1,rows
+        ! Search cols forward
+        goal_at = 1
+        print *,"...A"
+        do col_at = 0, longer_axis
+            call search_step_safe(board, goal, col_at, col_at+row_at, goal_at, matches)
+        end do
+
+        ! Search cols backward
+        goal_at = 1
+        print *,"...B"
+        do col_at = longer_axis, 0, -1
+            call search_step_safe(board, goal, col_at, col_at+row_at, goal_at, matches)
+        end do
+    end do
+
+    do row_at = 1,rows*2
+        ! Search cols forward
+        goal_at = 1
+        print *,"...C"
+        do col_at = 0, longer_axis
+            call search_step_safe(board, goal, col_at, row_at-col_at, goal_at, matches)
+        end do
+
+        ! Search cols backward
+        goal_at = 1
+        print *,"...D"
+        do col_at = longer_axis, 0, -1
+            call search_step_safe(board, goal, col_at, row_at-col_at, goal_at, matches)
+        end do
+    end do
+
+
+    print *, size(board,1), size(board,2)
+
+    print *,"FINAL", matches
 
 contains
+
 subroutine search_step(board, goal, col_at, row_at, goal_at, matches)
     implicit none
     character,allocatable,intent(in) :: board(:,:)
@@ -181,5 +223,21 @@ subroutine search_step(board, goal, col_at, row_at, goal_at, matches)
     end if
 
 end subroutine search_step
+
+! For diagonals
+subroutine search_step_safe(board, goal, col_at, row_at, goal_at, matches)
+    implicit none
+    character,allocatable,intent(in) :: board(:,:)
+    character(len=4),intent(in) :: goal
+    integer, intent(in) :: row_at, col_at
+    integer, intent(inout) :: goal_at, matches
+
+    print *, "CHECK", row_at, col_at, size(board, 2), size(board, 1), (row_at >= 0 .and. col_at >= 0 .and. row_at <= size(board, 2) .and. col_at <= size(board, 1))
+    if (row_at >= 1 .and. col_at >= 1 .and. row_at <= size(board, 2) .and. col_at <= size(board, 1)) then
+        print *,"  READ", board(col_at, row_at)
+        call search_step(board, goal, col_at, row_at, goal_at, matches)
+    end if
+
+end subroutine search_step_safe
 
 end program puzzle
