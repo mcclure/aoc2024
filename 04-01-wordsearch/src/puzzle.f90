@@ -2,15 +2,20 @@
 program puzzle
     use, intrinsic :: iso_fortran_env, only : error_unit
 
-    character(len=4) :: goal
+    ! Puzzle state
+    character(len=4), parameter :: goal = "XMAS"
     integer,allocatable :: board(:)
-    logical :: file_done, line_done
 
+    ! File handling state
     character(len=:), allocatable :: path
     character :: char_in
-    integer :: path_length, line_length, file_error
+    integer :: path_length, file_error
 
-    goal = "XMAS"
+    ! Parser state
+    integer, parameter :: ascii = selected_char_kind("ascii ") ! FORTRAN "newline" function too vague for my comfort
+    character(len=1), parameter :: cr = char(13, ascii), lf = char(10, ascii)
+    logical :: file_done = .false., line_done = .false.
+    integer :: line_length = 0, current_line_length = 0, rows = 0
 
     if (1 /= command_argument_count()) then
         write(error_unit,*) "Expected 1 argument (filename)" ! write to stderr
@@ -28,12 +33,15 @@ program puzzle
 
     ! Because automatic deferred length initialization is not working as expected,
     ! Don't try to read in the lines entire and instead read in character by character.
+    ! We do this in two passes: Once to determine the grid size, and once to actually read.
     open(10,file=path,access='stream',form='unformatted',action="read",iostat=file_error)
     if (0 /= file_error) then
         write(error_unit,*) "File error", file_error ! write to stderr
         if (file_error == 2) write(error_unit,*) "(No such file)"
         error stop
     end if
+
+    ! Pass to populate line_length, rows
     do
         read(10, iostat=file_error) char_in
         if (file_error > 0) then
@@ -41,11 +49,35 @@ program puzzle
             error stop
         end if
         file_done = file_error == -1
-        line_done = file_done .or. char_in == '\r' .or. char_in == '\n'
-        ! DO LOGIC HERE
+        line_done = file_done .or. char_in == cr .or. char_in == lf
+!        print *, '[', char_in, ']', line_done, file_done
+
+        ! End of line logic here
+        if (line_done) then
+            if (current_line_length /= 0) then !! Assume a zero length line is due to surplus newlines
+                if (line_length == 0) then
+                    line_length = current_line_length
+                else
+                    if (current_line_length > line_length) then
+                        write(error_unit,*) "Line", file_error, rows+1, "too short:", line_length, current_line_length ! write to stderr
+                        error stop
+                    end if
+                end if
+                current_line_length = 0
+                rows = rows + 1
+            end if
+        end if
+
         if (file_done) exit
-        ! DO LOGIC HERE
-        print *, char_in ! DELETE ME
+
+        ! New character logic here
+        if (.not. line_done) then
+            current_line_length = current_line_length + 1
+            if (line_length /= 0 .and. current_line_length > line_length) then
+                write(error_unit,*) "Line", rows+1, "too long:", line_length, current_line_length ! write to stderr
+                error stop
+            end if
+        end if
     end do
-    print *,line_length,line_in
+    print *, rows, line_length
 end program puzzle
