@@ -5,6 +5,7 @@ program puzzle
     ! Puzzle state
     character(len=4), parameter :: goal = "XMAS"
     character,allocatable :: board(:,:)
+    integer :: goal_at, matches = 0
 
     ! File handling state
     character(len=:), allocatable :: path
@@ -58,7 +59,7 @@ program puzzle
                 if (line_length == 0) then
                     line_length = current_line_length
                 else
-                    if (current_line_length > line_length) then
+                    if (current_line_length < line_length) then
                         write(error_unit,*) "Line", file_error, rows+1, "too short:", line_length, current_line_length ! write to stderr
                         error stop
                     end if
@@ -81,6 +82,12 @@ program puzzle
     end do
 
     ! Act
+
+    if (0 == line_length) then
+        write(error_unit,*) "File empty?" ! write to stderr
+        error stop
+    end if
+
     print *, "MAT", rows, line_length
     allocate(board (line_length, rows)) ! FORTRAN is column-major but this is not as I expect
 
@@ -122,6 +129,24 @@ program puzzle
         end if
     end do
 
-    print *, board
+    ! Okay ugh actually do the thing
+    ! Note reuse: row_at, col_at
+
+    do row_at = 1,rows
+        goal_at = 1
+        do col_at = 1, line_length
+            if (board(col_at, row_at) == goal(goal_at:goal_at)) then
+                goal_at = goal_at + 1
+                if (goal_at == len(goal) + 1) then
+                    goal_at = goal_at + 1
+                    matches = matches + 1
+                end if
+            else
+                goal_at = 1
+            end if
+        end do
+    end do
+
+    print *,matches
 
 end program puzzle
