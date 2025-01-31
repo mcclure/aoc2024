@@ -4,7 +4,7 @@ program puzzle
 
     ! Puzzle state
     character(len=4), parameter :: goal = "XMAS"
-    integer,allocatable :: board(:)
+    character,allocatable :: board(:,:)
 
     ! File handling state
     character(len=:), allocatable :: path
@@ -34,7 +34,7 @@ program puzzle
     ! Because automatic deferred length initialization is not working as expected,
     ! Don't try to read in the lines entire and instead read in character by character.
     ! We do this in two passes: Once to determine the grid size, and once to actually read.
-    open(10,file=path,access='stream',form='unformatted',action="read",iostat=file_error)
+    open(10,file=path,access='stream',form='unformatted',action='read',iostat=file_error)
     if (0 /= file_error) then
         write(error_unit,*) "File error", file_error ! write to stderr
         if (file_error == 2) write(error_unit,*) "(No such file)"
@@ -79,5 +79,15 @@ program puzzle
             end if
         end if
     end do
-    print *, rows, line_length
+
+    ! Act
+    print *, "MAT", rows, line_length
+    allocate(board (rows, line_length)) ! FORTRAN is column-major
+
+    ! Reset file
+    read(10, "()", advance='no', pos=1)
+
+    ! Load in matrix
+    ! Some repetition :(
+
 end program puzzle
