@@ -4,9 +4,11 @@ program puzzle
 
     character(len=4) :: goal
     integer,allocatable :: board(:)
+    logical :: file_done, line_done
 
     character(len=:), allocatable :: path
-    integer :: path_length
+    character :: char_in
+    integer :: path_length, line_length, file_error
 
     goal = "XMAS"
 
@@ -21,12 +23,29 @@ program puzzle
     ! Therefore, call twice, once to get the path length, and then after allocating call again
     ! to get the path. If called with expected (conformant?) behavior this is harmless.
     call get_command_argument(1, path, path_length)
-    print *, path_length, path
     allocate(Character (path_length) :: path)
     call get_command_argument(1, path)
-    print *, path
 
-    open(10,file=path)
+    ! Because automatic deferred length initialization is not working as expected,
+    ! Don't try to read in the lines entire and instead read in character by character.
+    open(10,file=path,access='stream',form='unformatted',action="read",iostat=file_error)
+    if (0 /= file_error) then
+        write(error_unit,*) "File error", file_error ! write to stderr
+        if (file_error == 2) write(error_unit,*) "(No such file)"
+        error stop
+    end if
+    do
+        read(10, iostat=file_error) char_in
+        if (file_error > 0) then
+            write(error_unit,*) "File read error", file_error ! write to stderr
+            error stop
+        end if
+        file_done = file_error == -1
+        line_done = file_done .or. char_in == '\r' .or. char_in == '\n'
+        ! DO LOGIC HERE
+        if (file_done) exit
+        ! DO LOGIC HERE
+        print *, char_in ! DELETE ME
+    end do
+    print *,line_length,line_in
 end program puzzle
-
-
