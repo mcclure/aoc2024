@@ -133,20 +133,53 @@ program puzzle
     ! Note reuse: row_at, col_at
 
     do row_at = 1,rows
+        ! Search cols forward
         goal_at = 1
         do col_at = 1, line_length
-            if (board(col_at, row_at) == goal(goal_at:goal_at)) then
-                goal_at = goal_at + 1
-                if (goal_at == len(goal) + 1) then
-                    goal_at = goal_at + 1
-                    matches = matches + 1
-                end if
-            else
-                goal_at = 1
-            end if
+            call search_step(board, goal, col_at, row_at, goal_at, matches)
+        end do
+
+        ! Search cols backward
+        goal_at = 1
+        do col_at = line_length, 1, -1
+            call search_step(board, goal, col_at, row_at, goal_at, matches)
+        end do
+    end do
+
+    do col_at = 1,line_length
+        ! Search rows forward
+        goal_at = 1
+        do row_at = 1, rows
+            call search_step(board, goal, col_at, row_at, goal_at, matches)
+        end do
+
+        ! Search rows backward
+        goal_at = 1
+        do row_at = rows, 1, -1
+            call search_step(board, goal, col_at, row_at, goal_at, matches)
         end do
     end do
 
     print *,matches
+
+contains
+subroutine search_step(board, goal, col_at, row_at, goal_at, matches)
+    implicit none
+    character,allocatable,intent(in) :: board(:,:)
+    character(len=4),intent(in) :: goal
+    integer, intent(in) :: row_at, col_at
+    integer, intent(inout) :: goal_at, matches
+
+    if (board(col_at, row_at) == goal(goal_at:goal_at)) then
+        goal_at = goal_at + 1
+        if (goal_at == len(goal) + 1) then
+            goal_at = goal_at + 1
+            matches = matches + 1
+        end if
+    else
+        goal_at = 1
+    end if
+
+end subroutine search_step
 
 end program puzzle
