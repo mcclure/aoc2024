@@ -15,7 +15,7 @@ program puzzle
     integer, parameter :: ascii = selected_char_kind("ascii ") ! FORTRAN "newline" function too vague for my comfort
     character(len=1), parameter :: cr = char(13, ascii), lf = char(10, ascii)
     logical :: file_done = .false., line_done = .false.
-    integer :: line_length = 0, current_line_length = 0, rows = 0
+    integer :: line_length = 0, current_line_length = 0, rows = 0, row_at = 1, col_at = 1
 
     if (1 /= command_argument_count()) then
         write(error_unit,*) "Expected 1 argument (filename)" ! write to stderr
@@ -82,12 +82,46 @@ program puzzle
 
     ! Act
     print *, "MAT", rows, line_length
-    allocate(board (rows, line_length)) ! FORTRAN is column-major
+    allocate(board (line_length, rows)) ! FORTRAN is column-major but this is not as I expect
 
     ! Reset file
-    read(10, "()", advance='no', pos=1)
+    ! AS FAR AS I KNOW THIS SHOULD WORK, BUT IT DOES NOT
+    ! read(10, "()", advance='no', pos=1)
 
     ! Load in matrix
     ! Some repetition :(
+    do
+        if (row_at == 1 .and. col_at == 1) then
+            read(10, iostat=file_error, pos=1) char_in
+        else
+            read(10, iostat=file_error) char_in
+        end if
+
+        if (file_error > 0) then
+            write(error_unit,*) "File read error", file_error ! write to stderr
+            error stop
+        end if
+        file_done = file_error == -1
+        line_done = file_done .or. char_in == cr .or. char_in == lf
+!        print *, '[', char_in, ']', line_done, file_done
+
+        ! End of line logic here
+        if (line_done) then
+            if (col_at /= 1) then !! Assume a zero length line is due to surplus newlines
+                col_at = 1
+                row_at = row_at + 1
+            end if
+        end if
+
+        if (file_done) exit
+
+        ! New character logic here
+        if (.not. line_done) then
+            board(col_at, row_at) = char_in
+            col_at = col_at + 1
+        end if
+    end do
+
+    print *, board
 
 end program puzzle
