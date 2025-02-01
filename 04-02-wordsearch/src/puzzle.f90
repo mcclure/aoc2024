@@ -135,69 +135,16 @@ program puzzle
 
     ! "Euclidian"
 
-    do row_at = 1,rows
-        ! Search cols forward
-        goal_at = 1
-        do col_at = 1, line_length
-            call search_step(board, goal, col_at, row_at, goal_at, matches)
+    do row_at = 2,rows-1
+        do col_at = 2, line_length-1
+            if ( board(col_at, row_at) == 'A' .and. &
+                 ((check(board, [col_at, row_at], [1,1])) .or. &
+                  (check(board, [col_at, row_at], [-1,-1]))) .and. &
+                 ((check(board, [col_at, row_at], [1,-1])) .or. &
+                  (check(board, [col_at, row_at], [-1,1]))) &
+            ) matches = matches + 1
         end do
-
-        ! Search cols backward
-        goal_at = 1
-        do col_at = line_length, 1, -1
-            call search_step(board, goal, col_at, row_at, goal_at, matches)
-        end do
-    end do
-
-    do col_at = 1,line_length
-        ! Search rows forward
-        goal_at = 1
-        do row_at = 1, rows
-            call search_step(board, goal, col_at, row_at, goal_at, matches)
-        end do
-
-        ! Search rows backward
-        goal_at = 1
-        do row_at = rows, 1, -1
-            call search_step(board, goal, col_at, row_at, goal_at, matches)
-        end do
-    end do
-
-    ! Diagonal
-    ! Checks more cells than it strictly needs to
-
-    do row_at = -rows+1,rows
-        ! Search cols forward
-        goal_at = 1
-!        print *,"...A"
-        do col_at = 0, longer_axis
-            call search_step_safe(board, goal, col_at, col_at+row_at, goal_at, matches)
-        end do
-
-        ! Search cols backward
-        goal_at = 1
-!        print *,"...B"
-        do col_at = longer_axis, 0, -1
-            call search_step_safe(board, goal, col_at, col_at+row_at, goal_at, matches)
-        end do
-    end do
-
-    do row_at = 1,rows*2
-        ! Search cols forward
-        goal_at = 1
-!        print *,"...C"
-        do col_at = 0, longer_axis
-            call search_step_safe(board, goal, col_at, row_at-col_at, goal_at, matches)
-        end do
-
-        ! Search cols backward
-        goal_at = 1
-!        print *,"...D"
-        do col_at = longer_axis, 0, -1
-            call search_step_safe(board, goal, col_at, row_at-col_at, goal_at, matches)
-        end do
-    end do
-
+   end do
 
     print *, size(board,1), size(board,2)
 
@@ -205,47 +152,28 @@ program puzzle
 
 contains
 
-subroutine search_step(board, goal, col_at, row_at, goal_at, matches)
+function check(board, at, offset) result (match)
     implicit none
     character,allocatable,intent(in) :: board(:,:)
-    character(len=4),intent(in) :: goal
-    integer, intent(in) :: row_at, col_at
-    integer, intent(inout) :: goal_at, matches
+    integer,dimension(2), intent(in) :: at,offset
+    logical :: match
 
-    character :: current
+    integer,dimension(2) :: temp
 
-    current = board(col_at, row_at)
+    match = .true.
 
-    if (current == goal(goal_at:goal_at)) then
-        goal_at = goal_at + 1
-        if (goal_at == len(goal) + 1) then
-            goal_at = goal_at + 1
-            matches = matches + 1
-        end if
-    else
-        if (current == goal(1:1)) then
-            goal_at = 2
-        else
-            goal_at = 1
-        end if
-    end if
+!    print *, "   is", at, offset
 
-end subroutine search_step
+    temp = at + offset
+!    print *, "Check1", temp, board(temp(1), temp(2))
+    match = match .and. board(temp(1), temp(2)) == 'M'
 
-! For diagonals
-subroutine search_step_safe(board, goal, col_at, row_at, goal_at, matches)
-    implicit none
-    character,allocatable,intent(in) :: board(:,:)
-    character(len=4),intent(in) :: goal
-    integer, intent(in) :: row_at, col_at
-    integer, intent(inout) :: goal_at, matches
-
-!    print *, "CHECK", row_at, col_at, size(board, 2), size(board, 1), (row_at >= 0 .and. col_at >= 0 .and. row_at <= size(board, 2) .and. col_at <= size(board, 1))
-    if (row_at >= 1 .and. col_at >= 1 .and. row_at <= size(board, 2) .and. col_at <= size(board, 1)) then
-!        print *,"  READ", board(col_at, row_at)
-        call search_step(board, goal, col_at, row_at, goal_at, matches)
-    end if
-
-end subroutine search_step_safe
+    temp = at - offset
+!    print *, "Check2", temp, board(temp(1), temp(2))
+    match = match .and. board(temp(1), temp(2)) == 'S'
+   
+!    print *, "Result", match
+!    print *, "" 
+end function check
 
 end program puzzle
