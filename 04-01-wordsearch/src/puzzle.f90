@@ -212,14 +212,22 @@ subroutine search_step(board, goal, col_at, row_at, goal_at, matches)
     integer, intent(in) :: row_at, col_at
     integer, intent(inout) :: goal_at, matches
 
-    if (board(col_at, row_at) == goal(goal_at:goal_at)) then
+    character :: current
+
+    current = board(col_at, row_at)
+
+    if (current == goal(goal_at:goal_at)) then
         goal_at = goal_at + 1
         if (goal_at == len(goal) + 1) then
             goal_at = goal_at + 1
             matches = matches + 1
         end if
     else
-        goal_at = 1
+        if (current == goal(1:1)) then
+            goal_at = 2
+        else
+            goal_at = 1
+        end if
     end if
 
 end subroutine search_step
