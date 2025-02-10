@@ -7,6 +7,14 @@ proc is_empty {s} {
     return [expr {$s == ""}]
 }
 
+# Unconditional unset
+proc drop {args} {
+    foreach v $args {
+        upvar $v x
+        if [info exists x] {unset x}
+    }
+}
+
 # Final result
 set total 0
 
@@ -64,8 +72,7 @@ dict for {a queue} $partial {
 puts $order
 puts ""
 
-# TODO: unconditional unset with info exists
-# unset partial a b b2 seen queue queue_next
+drop partial a b b2 seen queue queue_next
 
 # Extract update candidates
 while 1 {
@@ -97,8 +104,7 @@ while 1 {
     }
 }
 
-# TODO: unconditional unset
-# unset line test a b
+drop line test a b
 close $input
 
 puts "$total"
