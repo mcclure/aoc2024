@@ -64,17 +64,41 @@ dict for {a queue} $partial {
 puts $order
 puts ""
 
-unset partial a b b2 seen queue queue_next
+# TODO: unconditional unset with info exists
+# unset partial a b b2 seen queue queue_next
 
 # Extract update candidates
 while 1 {
     set line [gets $input]
     if [is_empty $line] break
     set line [split $line ","]
-    puts $line
+    set lline [llength $line]
+    set valid 1
+    if {$lline % 2 != 1} {error "Even numbered line?"}
+##    puts "line {$line} lline {$lline}"
+    for {set idx 0} {$valid && $idx < $lline-1} {incr idx} {
+##        puts "Index $idx"
+        set a [lindex $line $idx]
+        set test [lrange $line [expr {$idx+1}] $lline]
+##        puts "a {$a} test {$test}"
+        foreach b $test {
+##            puts "$a $b? [dict exists $order $a]"
+            if [expr {![dict exists $order $a] || !($b in [dict get $order $a])}] {
+                set valid 0
+                break
+            }
+        }
+    }
+    if $valid {
+        puts "Valid: $line"
+        set middle [lindex $line [expr $lline/2]]
+        puts "Middle: $middle\n"
+        set total [expr $total+$middle]
+    }
 }
 
-unset line
+# TODO: unconditional unset
+# unset line test a b
 close $input
 
-puts "\n$total"
+puts "$total"

@@ -9,4 +9,4 @@ Explanation: https://mastodon.social/@mcc/113743302074837530
 2. Nuclear: Forth [2TL 218]
 3. Multiply: x86_64 assembly, gas assembler
 4. Word search: FORTRAN
-5. Ordering: Tcl
+5. Ordering: Tcl [1TH 9650]
