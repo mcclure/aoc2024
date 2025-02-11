@@ -7,11 +7,6 @@ proc is_empty {s} {
     return [expr {$s == ""}]
 }
 
-proc decr {x} {
-    upvar $x y
-    set y [expr {$y-1}]
-}
-
 # Unconditional unset
 proc drop {args} {
     foreach v $args {
@@ -36,7 +31,7 @@ while 1 {
     lassign [split $line "|"] a b
 
     # Notice: Our edges point from the *right* of the | to the *left*
-    dict lappend partial $b $a
+    dict lappend partial $a $b
 }
 
 drop a b seen
@@ -52,11 +47,11 @@ while 1 {
     set valid 1
     if {$lline % 2 != 1} {error "Even numbered line? ($lline)"}
     puts "line {$line} lline {$lline}"
-    for {set idx [expr {$lline-1}]} {$valid && $idx >= 0} {decr idx} {
+    for {set idx 0} {$valid && $idx < $lline-1} {incr idx} {
         puts "\tIndex $idx"
         set a [lindex $line $idx]
         if [dict exists $partial $a] {
-            set test [lrange $line 0 [expr {$lline-1}]]
+            set test [lrange $line [expr {$idx+1}] $lline]
             puts "\ta {$a} test {$test}"
             foreach b [dict get $partial $a] {
                 set valid [expr {$valid && ($b in $test)}]
