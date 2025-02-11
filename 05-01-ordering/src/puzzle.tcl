@@ -18,7 +18,8 @@ proc drop {args} {
 # Final result
 set total 0
 
-# partial: Dict representing "a must precede b"
+# partial: Dict representing graph edges
+# order: Dict representing all edges reachable from each edge
 
 # Begin
 set input [open [lindex $argv 0] r]
@@ -30,35 +31,68 @@ while 1 {
 
     lassign [split $line "|"] a b
 
-    # Notice: Our edges point from the *right* of the | to the *left*
     dict lappend partial $a $b
 }
 
-drop a b seen
 puts $partial
+dict for {a queue} $partial {
+##    puts "A $a"
+    # Seen list resets once per root
+    set seen ""
+    # Starting from loop, repeat bfs search until graph exhausted
+    while {[expr {0 < [llength $queue]}]} {
+##        puts "Pass: $queue"
+##        puts "Len: [llength $queue]"
+        # Start building queue for next loop
+        set queue_next ""
 
-# Test update candidates
-# The problem statement is confusing: 
+        # For each edge we have to check this loop
+        foreach b $queue {
+##            puts "seen: {$seen} check: $b [dict exists $seen $b]"
+            # If edge not already seen for this root
+            if {![dict exists $seen $b]} {
+                # Preserve final result
+                dict lappend order $a $b
+                # Ensure we don't revisit this edge
+                dict set seen $b 1
+                # Queue all edges visible from this edge
+                if [dict exists $partial $b] {
+                    foreach b2 [dict get $partial $b] {
+##                        puts "inner: $b2"
+                        lappend queue_next $b2
+                    }
+                }
+            }
+        }
+        # Repeat with new queue
+        set queue $queue_next
+    }
+##    puts ""
+}
+puts $order
+puts ""
+
+drop partial a b b2 seen queue queue_next
+
+# Extract update candidates
 while 1 {
     set line [gets $input]
     if [is_empty $line] break
     set line [split $line ","]
     set lline [llength $line]
     set valid 1
-    if {$lline % 2 != 1} {error "Even numbered line? ($lline)"}
-    puts "line {$line} lline {$lline}"
+    if {$lline % 2 != 1} {error "Even numbered line?"}
+##    puts "line {$line} lline {$lline}"
     for {set idx 0} {$valid && $idx < $lline-1} {incr idx} {
-        puts "\tIndex $idx"
+##        puts "Index $idx"
         set a [lindex $line $idx]
-        if [dict exists $partial $a] {
-            set test [lrange $line [expr {$idx+1}] $lline]
-            puts "\ta {$a} test {$test}"
-            foreach b [dict get $partial $a] {
-                set valid [expr {$valid && ($b in $test)}]
-                if [expr {!$valid}] {
-                    puts "\t\tRejected: Did not find $b"
-                    break
-                }
+        set test [lrange $line [expr {$idx+1}] $lline]
+##        puts "a {$a} test {$test}"
+        foreach b $test {
+##            puts "$a $b? [dict exists $order $a]"
+            if [expr {![dict exists $order $a] || !($b in [dict get $order $a])}] {
+                set valid 0
+                break
             }
         }
     }
@@ -70,7 +104,7 @@ while 1 {
     }
 }
 
-drop line test a b valid pass_valid
+drop line test a b
 close $input
 
 puts "$total"
