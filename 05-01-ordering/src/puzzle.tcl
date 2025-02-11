@@ -1,3 +1,6 @@
+# Takes in an arbitrary partial order specified as number pairs.
+# Tests a series of lines to see if they follow the partial order.
+
 if { $argc != 1 } {
     puts stderr "Need filename as argument."
     exit 1
@@ -40,22 +43,27 @@ while 1 {
 puts "Forward: $partial_for"
 puts "Reverse: $partial_rev"
 
+# This function does *nothing*
+# I initially interpreted the problem statement to mean that if a|b and b|c, then a|c.
+# This is not true! This rule produces wrong answers on the puzzle input (but correct on the sample)
+# This function creates a "closure" of the sort rules. Rather than remove it I just return on line 1
 proc extend {partial} {
+    # Bail
     return $partial
     dict for {a queue} $partial {
-    ##    puts "A $a"
+##       puts "A $a"
         # Seen list resets once per root
         set seen ""
         # Starting from loop, repeat bfs search until graph exhausted
         while {[expr {0 < [llength $queue]}]} {
-    ##        puts "Pass: $queue"
-    ##        puts "Len: [llength $queue]"
+##            puts "Pass: $queue"
+##            puts "Len: [llength $queue]"
             # Start building queue for next loop
             set queue_next ""
 
             # For each edge we have to check this loop
             foreach b $queue {
-    ##            puts "seen: {$seen} check: $b [dict exists $seen $b]"
+##                puts "seen: {$seen} check: $b [dict exists $seen $b]"
                 # If edge not already seen for this root
                 if {![dict exists $seen $b]} {
                     # Preserve final result
@@ -65,7 +73,7 @@ proc extend {partial} {
                     # Queue all edges visible from this edge
                     if [dict exists $partial $b] {
                         foreach b2 [dict get $partial $b] {
-    ##                        puts "inner: $b2"
+##                            puts "inner: $b2"
                             lappend queue_next $b2
                         }
                     }
@@ -74,7 +82,7 @@ proc extend {partial} {
             # Repeat with new queue
             set queue $queue_next
         }
-    ##    puts ""
+##        puts ""
     }
     return $order
 }
@@ -104,6 +112,8 @@ while 1 {
 ##        puts "a {$a} test {$test}"
         foreach b $test {
 ##            puts "$a $b? [dict exists $order $a]"
+            # Although the problem statement seems to imply you must enforce both forward and backward ordering,
+            # In practice this second clause doesn't appear to change the results any. I am missing something.
             if [expr {
                 ![dict exists $order_for $a] || !($b in [dict get $order_for $a]) ||
                 ![dict exists $order_rev $b] || !($a in [dict get $order_rev $b])
