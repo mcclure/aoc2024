@@ -1,0 +1,16 @@
+# Ad-hoc userland implementation of comparison ops
+
+set '<0 { != 0 (& 9223372036854775808 (get args 0)) }
+set '< {
+	<0 (- (get args 0) (get args 1))
+}
+set '>= { ! (< (get args 0) (get args 1)) }
+set '<= { # No, these variable names aren't great
+	inset args '(_<=_x  _<=_y)
+	|| (=  _<=_x  _<=_y) (<  _<=_x  _<=_y)
+}
+set '> { ! (<= (get args 0) (get args 1)) }
+
+print (< 4 5) sp (<= 4 5) sp (> 4 5) sp (>= 4 5) ln
+print (< 9 2) sp (<= 9 2) sp (> 9 2) sp (>= 9 2) ln
+print (< 7 7) sp (<= 7 7) sp (> 7 7) sp (>= 7 7) ln  
