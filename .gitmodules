@@ -1,3 +1,4 @@
 [submodule "06-01-guard/lisp0"]
 	path = 06-01-guard/lisp0
 	url = git@github.com:mcclure/lisp0-experiment.git
+	branch = 2025-04-07
