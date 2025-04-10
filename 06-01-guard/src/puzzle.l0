@@ -1,6 +1,7 @@
 # Advent of Code 2025, day 6, part 1 -- if/while test (Fizzbuzz)
 
-set 'file-arg (get args 0) # Due to a bug, outermost args is not restored on fn call
+# Due to a bug, outermost args is not restored on fn call, so do this first
+inset args '(arg-file arg-debug)
 
 set 'noop {return nil}
 
@@ -62,6 +63,64 @@ set 'for {
 	]]
 }
 
+set 'match {
+	inset args '(_match_key _match_table _match_default)
+	set '_match_at 0
+	set '_match_to (len _match_table)
+	set '_match_result nil
+
+#	print (get (get _match_table 0) 0) ln
+
+	while {&& (! _match_result) (< _match_at _match_to)} {
+		set '_match_line (get _match_table _match_at)
+#		print "tst" _match_line sp _match_key sp (get _match_line 0) sp "?" (= _match_key (get _match_line 0)) ln
+		if (= _match_key (get _match_line 0)) {
+			set '_match_result (get _match_line 1)
+		} {
+			set '_match_at (+ _match_at 1)
+		}
+	}
+
+	set '_match_table nil # Clear these, they might be large...
+	set '_match_line nil
+
+	if _match_result {
+		_match_result
+	} {
+		if _match_default {
+			_match_default
+		}
+	}
+}
+
+# Vectors
+
+set 'v { return [get args 0, get args 1] }
+
+set 'v+ {
+	inset args '(_v_1 _v_2)
+	v \
+		(+ (get _v_1 0) (get _v_2 0)) \
+		(+ (get _v_1 1) (get _v_2 1))
+}
+
+set 'vneg {
+	inset args '(_v_1)
+	v (neg (get _v_1 0)) (neg (get _v_2 0))
+}
+
+set 'v= {
+	inset args '(_v_1 _v_2)
+	&& \
+		(= (get _v_1 0) (get _v_2 0)) \
+		(= (get _v_1 1) (get _v_2 1))
+}
+
+set 'vstr {
+	inset args '(_v_1)
+	+ "[" (get _v_1 0) ", " (get _v_1 1) "]"
+}
+
 # Program
 
 set 'abort nil
@@ -82,19 +141,35 @@ if (! abort) {
 	set 'VISITED 5
 	set 'WALL    6
 
+	set 'DIRS [
+		v  1  0
+		v  0  1
+		v -1  0
+		v  0 -1
+	]
+
+	set 'CHARS '(> ^ v < . X)
+	push CHARS "#" # Oops, hard to escape #
+
 	# Vars
 
 	set 'x-len nil
+	set 'g-at nil
+	set 'g-dir nil
+	set 'g-visit 0
+
+	set 'board []
 
 	# Input
 
-	file-in file-arg
+	file-in arg-file
 
 	while {
 		set 'line (read-line)
 		&& line (! abort)
 	} {
 		set 'line-len (len line)
+
 		if (> line-len 0) {
 			if (! x-len) {
 				set 'x-len line-len
@@ -107,15 +182,95 @@ if (! abort) {
 		}
 
 		if (! abort) {
-
-			# This line is good, parse it
-			for 'x 0 line-len {
-				noop
+			set 'guard-found {
+				inset args '(tmp-dir)
+				if g-dir {
+					print "Error: Multiple guards" ln
+					set 'abort true
+				} {
+					set 'g-dir tmp-dir
+					set 'g-at (v x (len board))
+				}
 			}
 
+			# This line is good, parse it
+			set 'line-tile []
+			for 'x 0 line-len {
+				set 'char (get line x)
+
+				set 'tile (match char [
+					return [return ".", return {
+						return FREE
+					}]
+
+					return [return "#", return {
+						return WALL
+					}]
+
+					return [return ">", return {
+						guard-found RIGHT
+						return FREE
+					}]
+
+					return [return "v", return {
+						guard-found DOWN
+						return FREE
+					}]
+
+					return [return "<", return {
+						guard-found LEFT
+						return FREE
+					}]
+
+					return [return "^", return {
+						guard-found UP
+						return FREE
+					}]
+				] {
+					print "Error: Unrecognized character " char ln
+					set 'abort true
+				})
+
+				if (! abort) {
+					push line-tile tile
+				}
+			}
+			push board line-tile
 		}
 #		print line ln
 	}
 
 	file-in nil
+}
+
+if (! abort) {
+	print "Guard: " (get CHARS g-dir) sp (vstr g-at) ln
+
+	set 'board-print {
+		for 'y 0 (len board) {
+			for 'x 0 x-len {
+				if (v= g-at (v x y)) {
+					print (get CHARS g-dir)
+				} {
+					set 'tile (get (get board x) y)
+					print (get CHARS tile)
+				}
+			}
+			print ln
+		}
+	}
+
+	set 'board-in {
+		inset args '(_b_in)
+		&& \
+			(<= 0 (get _b_in 0))           \
+			(<= 0 (get _b_in 1))           \
+			(<  x-len       (get _b_in 0)) \
+			(>  (len board) (get _b_in 1))
+	}
+
+	if arg-debug {
+		print ln
+		board-print
+	}
 }
