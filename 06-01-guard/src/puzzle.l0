@@ -1,5 +1,7 @@
 # Advent of Code 2025, day 6, part 1 -- if/while test (Fizzbuzz)
 
+set 'file-arg (get args 0) # Due to a bug, outermost args is not restored on fn call
+
 set 'noop {return nil}
 
 # Usage: if conditional {case1} {case2}
@@ -60,22 +62,32 @@ set 'for {
 	]]
 }
 
-# Test for
+# Program
 
-for 'x 0 10 {
-	print x ln
-}
+if (< (len args) 1) {
+	print "Error: No arguments" ln
+} {
 
-for 'x 10 0 {
-	print x ln
-}
+	# Constants 
 
-print ln
+	set 'RIGHT   0
+	set 'UP      1
+	set 'DOWN    2
+	set 'LEFT    3
+	set 'FREE    4
+	set 'VISITED 5
+	set 'WALL    6
 
-for 'y 0 11 {
-	for 'x 0 11 {
-		if (!= x 0) { print sp }
-		print (+ x y)
+	# Input
+
+	file-in file-arg
+
+	while {
+		set 'line (read-line)
+		return line
+	} {
+		print line ln
 	}
-	print ln
+
+	file-in nil
 }
