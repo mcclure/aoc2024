@@ -35,34 +35,37 @@ set '<= { # No, these variable names aren't great
 }
 set '> { ! (<= (get args 0) (get args 1)) }
 
-# Fizzbuzz up to command line argument [default 10 if absent]
-set 'at 0
-set 'target (get args 0)
+# Helpers -- flow control -- 2
 
-if target {
-	set 'target (to-int target) # ARGV is strings...
-} {
-	set 'target 10              # No ARGV
+# Usage for 'varname from to {case} step
+set 'for {
+	inset args '(_for_var  _for_from  _for_to  _for_case  _for_step) 
+	if (! _for_step) {
+		set '_for_step \
+			(if (<  _for_from  _for_to) {return 1} {return -1})
+	}
+
+	set _for_var _for_from
+
+	# Construct to inline vars
+	[return [
+		return 'while
+		make-quote [return [return !=, return _for_var, return _for_to]]
+		make-quote [
+	        return [make-quote _for_case]
+	        return [return set, make-quote _for_var, return [
+				return '+, return _for_var, return _for_step
+			]]
+		]
+	]]
 }
 
-set '=0 { = 0 (get args 0) }
+# Test for
 
-while {< at target} {
-	set 'at (+ at 1)
-	set 'three (=0 (% at 3))
-	set 'five (=0 (% at 5))
-	print (if three {
-		if five {
-			return "Fizzbuzz"
-		} {
-			return "Fizz"
-		}
-	} {
-		if five {
-			return "Buzz"
-		} {
-			return at
-		}
-	}) sp
+for 'x 0 10 {
+	print x ln
 }
-print ln
+
+for 'x 10 0 {
+	print x ln
+}

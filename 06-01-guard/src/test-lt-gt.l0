@@ -1,6 +1,6 @@
 # Ad-hoc userland implementation of comparison ops
 
-set '<0 { != 0 (& 9223372036854775808 (get args 0)) }
+set '<0 { != 0 (& -9223372036854775808 (get args 0)) }
 set '< {
 	<0 (- (get args 0) (get args 1))
 }
