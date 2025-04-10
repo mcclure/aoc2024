@@ -2,4 +2,4 @@ git submodules update --init --recursive
 
 (cd lisp0 && cargo build --release)
 
-./lisp0/target/release/lisp0 src/test-fizzbuzz.l0 -- 25
+./lisp0/target/release/lisp0 src/puzzle.l0 -- data/puzzle.txt

@@ -1,4 +1,5 @@
-# Advent of Code 2025, day 6, part 1 -- solution
+# Advent of Code 2025, day 6, part 2 -- solution
+# Note: Assumes no input produces a loop "normally" (without added walls)
 
 set 'noop {return nil}
 
@@ -132,9 +133,13 @@ set 'RIGHT   0
 set 'UP      1
 set 'DOWN    2
 set 'LEFT    3
-set 'FREE    4
-set 'VISITED 5
-set 'WALL    6
+set 'VISIT    4
+set 'VISIT-RIGHT 4
+set 'VISIT-UP    5
+set 'VISIT-DOWN  6
+set 'VISIT-LEFT  7
+set 'FREE    8
+set 'WALL    9
 
 set 'DIRS [
 	v  1  0
@@ -143,7 +148,7 @@ set 'DIRS [
 	v  0  1
 ]
 
-set 'CHARS '(> ^ < v . X)
+set 'CHARS '(▶ ▲ ◀ ▼ > ^ < v .) # Consider: » 🠅 « 🠇
 push CHARS "#" # Oops, hard to escape #
 
 # Interpret debug args
@@ -313,7 +318,7 @@ while {return searching} {
 				if (= step-tile FREE) {
 					# Case: The space has never been visited before.
 					set 'g-visit (+ g-visit 1)
-					set (get board (get g-at 1)) (get g-at 0) VISITED
+					set (get board (get g-at 1)) (get g-at 0) (+ VISIT g-dir)
 				}
 			}
 		}
