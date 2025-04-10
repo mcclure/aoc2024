@@ -131,13 +131,13 @@ if (< (len args) 1) {
 
 set 'RIGHT   0
 set 'UP      1
-set 'DOWN    2
-set 'LEFT    3
+set 'LEFT    2
+set 'DOWN    3
 set 'VISIT    4
 set 'VISIT-RIGHT 4
 set 'VISIT-UP    5
-set 'VISIT-DOWN  6
-set 'VISIT-LEFT  7
+set 'VISIT-LEFT  6
+set 'VISIT-DOWN  7
 set 'FREE    8
 set 'WALL    9
 
@@ -248,6 +248,7 @@ if arg-debug {
 	print "Guard: " (get CHARS g-dir) sp (vstr g-at) ln
 }
 
+# No arguments
 set 'board-print {
 	for 'y 0 (len board) {
 		for 'x 0 x-len {
@@ -262,6 +263,7 @@ set 'board-print {
 	}
 }
 
+# Argument: v
 set 'board-in {
 	inset args '(_b_in)
 	&& \
@@ -271,9 +273,18 @@ set 'board-in {
 		(>  (len board) (get _b_in 1))
 }
 
+# Argument: v
 set 'board-get {
 	inset args '(_b_in)
 	get (get board (get _b_in 1)) (get _b_in 0)
+}
+
+# Argument: Tile
+set 'board-free {
+	inset args '(_b_in)
+	&& \
+		(>= _b_in VISIT-RIGHT) \
+		(<= _b_in FREE)
 }
 
 set 'searching (board-in g-at)
@@ -286,11 +297,13 @@ while {return searching} {
 	}
 
 	# One iteration of this loop is one compass direction checked
+	set 'step-done nil
 	set 'step-success nil
 	set 'step-tried 0
+	set 'step-dir g-dir
 
-	while {&& (! step-success) (< step-tried 4)} {
-		set 'step-at (v+ g-at (get DIRS g-dir))
+	while {&& (! step-done) (< step-tried 4)} {
+		set 'step-at (v+ g-at (get DIRS step-dir))
 		
 		if arg-debug-verbose { print "Try: " (vstr step-at) sp }
 
@@ -299,7 +312,7 @@ while {return searching} {
 
 			# Case: We have escaped the board.
 			# Don't update the board or guard, just quit.
-			set 'step-success true
+			set 'step-done true
 			set 'searching nil
 		} {
 			set 'step-tile (board-get step-at)
@@ -307,19 +320,13 @@ while {return searching} {
 				if arg-debug-verbose { print "ROT " }
 
 				# Case: Our candidate space is occupied. Rotate.
-				set 'g-dir (% (+ g-dir 7) 4) # We use euler angles, the problem doesn't
+				set 'step-dir (% (+ step-dir 7) 4) # We use euler angles, the problem doesn't
 			} {
 				if arg-debug-verbose { print "SUCCESS" }
 
 				# Case: candidate space unoccupied
+				set 'step-done true
 				set 'step-success true
-				set 'g-at step-at
-
-				if (= step-tile FREE) {
-					# Case: The space has never been visited before.
-					set 'g-visit (+ g-visit 1)
-					set (get board (get g-at 1)) (get g-at 0) (+ VISIT g-dir)
-				}
 			}
 		}
 
@@ -329,8 +336,23 @@ while {return searching} {
 		set 'step-tried (+ step-tried 1)
 	}
 
-	if (! step-success) {
-		fail "Guard trapped?"
+	if searching {
+		if step-done {
+			if (= step-tile (+ g-dir 4)) {
+				fail "Guard loop in alpha timeline"
+			} {
+				set 'g-dir step-dir
+				set 'g-at step-at
+
+				if (board-free step-tile) {
+					# Case: The space has never been visited before.
+					set (get board (get g-at 1)) (get g-at 0) (+ VISIT g-dir)
+				}
+			}
+		} {
+			print ln
+			fail "Guard trapped?"
+		}
 	}
 
 	set 'g-step (+ g-step 1) # For debugging
@@ -338,4 +360,4 @@ while {return searching} {
 
 if (&& arg-debug (! arg-debug-verbose)) { board-print }
 
-print ln "Steps: " g-step " Visited: " g-visit ln
+print ln "Steps: " g-step
