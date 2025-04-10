@@ -64,10 +64,14 @@ set 'for {
 
 # Program
 
+set 'abort nil
+
 if (< (len args) 1) {
 	print "Error: No arguments" ln
-} {
+	set 'abort true
+}
 
+if (! abort) {
 	# Constants 
 
 	set 'RIGHT   0
@@ -78,15 +82,39 @@ if (< (len args) 1) {
 	set 'VISITED 5
 	set 'WALL    6
 
+	# Vars
+
+	set 'x-len nil
+
 	# Input
 
 	file-in file-arg
 
 	while {
 		set 'line (read-line)
-		return line
+		&& line (! abort)
 	} {
-		print line ln
+		set 'line-len (len line)
+		if (> line-len 0) {
+			if (! x-len) {
+				set 'x-len line-len
+			} {
+				if (!= line-len x-len) {
+					print "Error: Lines of inconsistent length (" line-len ", " x-len ")" ln
+					set 'abort true
+				}
+			}
+		}
+
+		if (! abort) {
+
+			# This line is good, parse it
+			for 'x 0 line-len {
+				noop
+			}
+
+		}
+#		print line ln
 	}
 
 	file-in nil
