@@ -1,8 +1,5 @@
 # Advent of Code 2025, day 6, part 1 -- if/while test (Fizzbuzz)
 
-# Due to a bug, outermost args is not restored on fn call, so do this first
-inset args '(arg-file arg-debug-verbose arg-debug)
-
 set 'noop {return nil}
 
 # Usage: if conditional {case1} {case2}
@@ -122,6 +119,8 @@ set 'vstr {
 }
 
 # Program
+
+inset args '(arg-file arg-debug-verbose arg-debug)
 
 set 'abort nil
 
