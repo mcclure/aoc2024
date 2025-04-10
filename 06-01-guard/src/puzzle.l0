@@ -122,232 +122,215 @@ set 'vstr {
 
 inset args '(arg-file arg-debug-verbose arg-debug)
 
-set 'abort nil
-
 if (< (len args) 1) {
-	print "Error: No arguments" ln
-	set 'abort true
+	fail "No arguments" ln
 }
 
-if (! abort) {
-	# Constants 
+# Constants
 
-	set 'RIGHT   0
-	set 'UP      1
-	set 'DOWN    2
-	set 'LEFT    3
-	set 'FREE    4
-	set 'VISITED 5
-	set 'WALL    6
+set 'RIGHT   0
+set 'UP      1
+set 'DOWN    2
+set 'LEFT    3
+set 'FREE    4
+set 'VISITED 5
+set 'WALL    6
 
-	set 'DIRS [
-		v  1  0
-		v  0 -1
-		v -1  0
-		v  0  1
-	]
+set 'DIRS [
+	v  1  0
+	v  0 -1
+	v -1  0
+	v  0  1
+]
 
-	set 'CHARS '(> ^ < v . X)
-	push CHARS "#" # Oops, hard to escape #
+set 'CHARS '(> ^ < v . X)
+push CHARS "#" # Oops, hard to escape #
 
-	# Interpret debug args
+# Interpret debug args
+if arg-debug-verbose {
+	set 'arg-debug-verbose (!= arg-debug-verbose "0")
+	set 'arg-debug true
+} {
+	if arg-debug { set 'arg-debug (!= arg-debug "0") }
+}
+
+# Vars
+
+set 'x-len nil
+set 'g-at nil
+set 'g-dir nil
+set 'g-visit 0
+set 'g-step 0
+
+set 'board []
+
+# Input
+
+file-in arg-file
+
+while {
+	set 'line (read-line)
+	return line
+} {
+	set 'line-len (len line)
+
+	if (> line-len 0) {
+		if (! x-len) {
+			set 'x-len line-len
+		} {
+			if (!= line-len x-len) {
+				fail "Lines of inconsistent length (" line-len ", " x-len ")"
+			}
+		}
+
+		set 'guard-found {
+			inset args '(tmp-dir)
+			if g-dir {
+				fail "Multiple guards"
+			} {
+				set 'g-dir tmp-dir
+				set 'g-at (v x (len board))
+			}
+		}
+
+		# This line is good, parse it
+		set 'line-tile []
+		for 'x 0 line-len {
+			set 'char (get line x)
+
+			set 'tile (match char [
+				return [return ".", return {
+					return FREE
+				}]
+
+				return [return "#", return {
+					return WALL
+				}]
+
+				return [return ">", return {
+					guard-found RIGHT
+					return FREE
+				}]
+
+				return [return "v", return {
+					guard-found DOWN
+					return FREE
+				}]
+
+				return [return "<", return {
+					guard-found LEFT
+					return FREE
+				}]
+
+				return [return "^", return {
+					guard-found UP
+					return FREE
+				}]
+			] {
+				fail "Unrecognized character " char
+			})
+
+			push line-tile tile
+		}
+		push board line-tile
+	}
+}
+
+file-in nil
+
+if arg-debug {
+	print "Board: " x-len " x " (len board) ln
+	print "Guard: " (get CHARS g-dir) sp (vstr g-at) ln
+}
+
+set 'board-print {
+	for 'y 0 (len board) {
+		for 'x 0 x-len {
+			if (v= g-at (v x y)) {
+				print (get CHARS g-dir)
+			} {
+				set 'tile (get (get board y) x)
+				print (get CHARS tile)
+			}
+		}
+		print ln
+	}
+}
+
+set 'board-in {
+	inset args '(_b_in)
+	&& \
+		(<= 0 (get _b_in 0))           \
+		(<= 0 (get _b_in 1))           \
+		(>  x-len       (get _b_in 0)) \
+		(>  (len board) (get _b_in 1))
+}
+
+set 'board-get {
+	inset args '(_b_in)
+	get (get board (get _b_in 1)) (get _b_in 0)
+}
+
+set 'searching (board-in g-at)
+
+# One iteration of this loop is one step of the guard
+while {return searching} {
 	if arg-debug-verbose {
-		set 'arg-debug-verbose (!= arg-debug-verbose "0")
-		set 'arg-debug true
-	} {
-		if arg-debug { set 'arg-debug (!= arg-debug "0") }
+		print ln "  -- step" sp g-step ln ln
+		board-print
 	}
 
-	# Vars
+	# One iteration of this loop is one compass direction checked
+	set 'step-success nil
+	set 'step-tried 0
 
-	set 'x-len nil
-	set 'g-at nil
-	set 'g-dir nil
-	set 'g-visit 0
-	set 'g-step 0
+	while {&& (! step-success) (< step-tried 4)} {
+		set 'step-at (v+ g-at (get DIRS g-dir))
+		
+		if arg-debug-verbose { print "Try: " (vstr step-at) sp }
 
-	set 'board []
+		if (! (board-in step-at)) {
+			if arg-debug-verbose { print "OUT" }
 
-	# Input
+			# Case: We have escaped the board.
+			# Don't update the board or guard, just quit.
+			set 'step-success true
+			set 'searching nil
+		} {
+			set 'step-tile (board-get step-at)
+			if (= step-tile WALL) {
+				if arg-debug-verbose { print "ROT " }
 
-	file-in arg-file
-
-	while {
-		set 'line (read-line)
-		&& line (! abort)
-	} {
-		set 'line-len (len line)
-
-		if (> line-len 0) {
-			if (! x-len) {
-				set 'x-len line-len
+				# Case: Our candidate space is occupied. Rotate.
+				set 'g-dir (% (+ g-dir 7) 4) # We use euler angles, the problem doesn't
 			} {
-				if (!= line-len x-len) {
-					print "Error: Lines of inconsistent length (" line-len ", " x-len ")" ln
-					set 'abort true
-				}
-			}
+				if arg-debug-verbose { print "SUCCESS" }
 
-			if (! abort) {
-				set 'guard-found {
-					inset args '(tmp-dir)
-					if g-dir {
-						print "Error: Multiple guards" ln
-						set 'abort true
-					} {
-						set 'g-dir tmp-dir
-						set 'g-at (v x (len board))
-					}
-				}
-
-				# This line is good, parse it
-				set 'line-tile []
-				for 'x 0 line-len {
-					set 'char (get line x)
-
-					set 'tile (match char [
-						return [return ".", return {
-							return FREE
-						}]
-
-						return [return "#", return {
-							return WALL
-						}]
-
-						return [return ">", return {
-							guard-found RIGHT
-							return FREE
-						}]
-
-						return [return "v", return {
-							guard-found DOWN
-							return FREE
-						}]
-
-						return [return "<", return {
-							guard-found LEFT
-							return FREE
-						}]
-
-						return [return "^", return {
-							guard-found UP
-							return FREE
-						}]
-					] {
-						print "Error: Unrecognized character " char ln
-						set 'abort true
-					})
-
-					if (! abort) {
-						push line-tile tile
-					}
-				}
-				push board line-tile
-			}
-		}
-	}
-
-	file-in nil
-}
-
-if (! abort) {
-	if arg-debug {
-		print "Board: " x-len " x " (len board) ln
-		print "Guard: " (get CHARS g-dir) sp (vstr g-at) ln
-	}
-
-	set 'board-print {
-		for 'y 0 (len board) {
-			for 'x 0 x-len {
-				if (v= g-at (v x y)) {
-					print (get CHARS g-dir)
-				} {
-					set 'tile (get (get board y) x)
-					print (get CHARS tile)
-				}
-			}
-			print ln
-		}
-	}
-
-	set 'board-in {
-		inset args '(_b_in)
-		&& \
-			(<= 0 (get _b_in 0))           \
-			(<= 0 (get _b_in 1))           \
-			(>  x-len       (get _b_in 0)) \
-			(>  (len board) (get _b_in 1))
-	}
-
-	set 'board-get {
-		inset args '(_b_in)
-		get (get board (get _b_in 1)) (get _b_in 0)
-	}
-
-	set 'searching (board-in g-at)
-
-	# One iteration of this loop is one step of the guard
-	while {&& searching (! abort)} {
-		if arg-debug-verbose {
-			print ln "  -- step" sp g-step ln ln
-			board-print
-		}
-
-		# One iteration of this loop is one compass direction checked
-		set 'step-success nil
-		set 'step-tried 0
-
-		while {&& (! step-success) (< step-tried 4)} {
-			set 'step-at (v+ g-at (get DIRS g-dir))
-			
-			if arg-debug-verbose { print "Try: " (vstr step-at) sp }
-
-			if (! (board-in step-at)) {
-				if arg-debug-verbose { print "OUT" }
-
-				# Case: We have escaped the board.
-				# Don't update the board or guard, just quit.
+				# Case: candidate space unoccupied
 				set 'step-success true
-				set 'searching nil
-			} {
-				set 'step-tile (board-get step-at)
-				if (= step-tile WALL) {
-					if arg-debug-verbose { print "ROT " }
+				set 'g-at step-at
 
-					# Case: Our candidate space is occupied. Rotate.
-					set 'g-dir (% (+ g-dir 7) 4) # We use euler angles, the problem doesn't
-				} {
-					if arg-debug-verbose { print "SUCCESS" }
-
-					# Case: candidate space unoccupied
-					set 'step-success true
-					set 'g-at step-at
-
-					if (= step-tile FREE) {
-						# Case: The space has never been visited before.
-						set 'g-visit (+ g-visit 1)
-						set (get board (get g-at 1)) (get g-at 0) VISITED
-					}
+				if (= step-tile FREE) {
+					# Case: The space has never been visited before.
+					set 'g-visit (+ g-visit 1)
+					set (get board (get g-at 1)) (get g-at 0) VISITED
 				}
 			}
-
-			if arg-debug-verbose { print ln }
-
-			# Only try 4 times then give up.
-			set 'step-tried (+ step-tried 1)
 		}
 
-		if (! step-success) {
-			print "Error: Guard trapped?" ln
-			set 'abort true
-		}
+		if arg-debug-verbose { print ln }
 
-		set 'g-step (+ g-step 1) # For debugging
+		# Only try 4 times then give up.
+		set 'step-tried (+ step-tried 1)
 	}
+
+	if (! step-success) {
+		fail "Guard trapped?"
+	}
+
+	set 'g-step (+ g-step 1) # For debugging
 }
 
-if (! abort) {
-	if (&& arg-debug (! arg-debug-verbose)) { board-print }
+if (&& arg-debug (! arg-debug-verbose)) { board-print }
 
-	print ln "Steps: " g-step " Visited: " g-visit ln
-}
+print ln "Steps: " g-step " Visited: " g-visit ln
