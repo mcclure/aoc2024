@@ -1,0 +1,3 @@
+Without time travel, required steps:
+sample: 44
+puzzle: 5950

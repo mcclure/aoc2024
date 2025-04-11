@@ -483,20 +483,21 @@ while {return searching} {
 				}
 
 				set 'g-at step-at
+
+				set 'g-step (+ g-step 1) # For debugging
+				if (&& (!= time-mode SPECULATE) (= 0 (% g-step print-on-step))) {
+					print "        " g-step "/" expected-steps " steps" ln
+				}
 			} {
 				print ln
 				fail "Guard loop in alpha timeline"
 			}
 		}
 	}
-
-	set 'g-step (+ g-step 1) # For debugging
-	if (&& (!= time-mode SPECULATE) (= 0 (% g-step print-on-step))) {
-		print "        " g-step "/" expected-steps " steps" ln
-	}
 }
 
-if (&& arg-debug (! arg-debug-verbose)) {
+if arg-debug {
+	print ln "FINAL" ln ln
 	for 'idx 0 (len inserts) {
 		board-set board (get inserts idx) PLAYER-WALL
 	}
