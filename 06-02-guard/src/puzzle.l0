@@ -1,5 +1,6 @@
 # Advent of Code 2025, day 6, part 2 -- solution
-# Note: Assumes no input produces a loop "normally" (without added walls)
+# In retrospect, this could have been a lot simpler if I had simply tested every cell
+# rather than only testing cells the guard walks over. Oh well. It's "optimized"?
 
 set 'noop {return nil}
 
@@ -140,6 +141,10 @@ set 'VISIT-LEFT  6
 set 'VISIT-DOWN  7
 set 'FREE    8
 set 'WALL    9
+set 'PLAYER-WALL 10
+
+set 'SPECULATE 1
+set 'REAL 0
 
 set 'DIRS [
 	v  1  0
@@ -149,7 +154,7 @@ set 'DIRS [
 ]
 
 set 'CHARS '(▶ ▲ ◀ ▼ > ^ < v .) # Consider: » 🠅 « 🠇
-push CHARS "#" # Oops, hard to escape #
+push CHARS "#" 'X # Oops, hard to escape #
 
 # Interpret debug args
 if arg-debug-verbose {
@@ -168,6 +173,8 @@ set 'g-visit 0
 set 'g-step 0
 
 set 'board []
+set 'inserts []
+set 'already-tried (make-dict) # FIXME: This changes nothing and can be removed.
 
 # Input
 
@@ -250,17 +257,19 @@ if arg-debug {
 
 # No arguments
 set 'board-print {
-	for 'y 0 (len board) {
+	inset args '(_b_b)
+	for 'y 0 (len _b_b) {
 		for 'x 0 x-len {
 			if (v= g-at (v x y)) {
 				print (get CHARS g-dir)
 			} {
-				set 'tile (get (get board y) x)
+				set 'tile (get (get _b_b y) x)
 				print (get CHARS tile)
 			}
 		}
 		print ln
 	}
+	set '_b_b nil # Clean large garbage
 }
 
 # Argument: v
@@ -275,8 +284,18 @@ set 'board-in {
 
 # Argument: v
 set 'board-get {
-	inset args '(_b_in)
-	get (get board (get _b_in 1)) (get _b_in 0)
+	inset args '(_b_b _b_in)
+	set '_b_r (get (get _b_b (get _b_in 1)) (get _b_in 0))
+	set '_b_b nil # Clean large garbage
+	return _b_r
+}
+
+set 'board-set {
+	inset args '(_b_s_b _b_s_a _b_s_v)
+	set (get  _b_s_b  (get  _b_s_a  1)) (get  _b_s_a  0)  _b_s_v
+	set '_b_s_b nil
+	set '_b_s_a nil
+	set '_b_s_v nil
 }
 
 # Argument: Tile
@@ -287,24 +306,69 @@ set 'board-free {
 		(<= _b_in FREE)
 }
 
+# Argument: Array
+set 'array-dup {
+	inset args '(_a_d_a)
+	set '_a_d_r []
+	for '_a_d_x 0 (len _a_d_a) {
+		push _a_d_r (get  _a_d_a  _a_d_x)
+	}
+	set '_a_d_a nil # Clean large garbage
+	return _a_d_r
+}
+
+# Argument: 2D-Array
+set 'board-dup {
+	inset args '(_b_d_a)
+	set '_b_d_r []
+	for '_b_d_x 0 (len _b_d_a) {
+		push _b_d_r (array-dup (get  _b_d_a  _b_d_x))
+	}
+	set '_b_d_a nil # Clean large garbage
+	set '_a_d_r nil # Clean large garbage
+	return _b_d_r
+}
+
+# Unique hash for a cell
+# Argument: v
+set 'board-code {
+	inset args '(_v_1)
+	+ (* (get _v_1 1) x-len) (get _v_1 0)
+}
+
 set 'searching (board-in g-at)
+set 'time-mode nil # 1 = speculative, 0 = real
+set 'time-place nil
+set 'time-backup-at nil
+set 'time-backup-dir nil
+set 'step-board board
 
 # One iteration of this loop is one step of the guard
 while {return searching} {
-	if arg-debug-verbose {
-		print ln "  -- step" sp g-step ln ln
-		board-print
-	}
-
 	# One iteration of this loop is one compass direction checked
 	set 'step-done nil
 	set 'step-success nil
 	set 'step-tried 0
 	set 'step-dir g-dir
+	set 'step-place nil
+	set 'step-reboot nil
+
+	if (= time-mode nil) {
+		set 'time-mode REAL
+		set 'step-place true
+	}
+
+	if arg-debug-verbose {
+		print ln "  -- step" sp g-step
+		if step-place { print " (WILL SPECULATE)"}
+		if (= time-mode SPECULATE) { print " (SPECULATED)"}
+		print ln ln
+		board-print step-board 
+	}
 
 	while {&& (! step-done) (< step-tried 4)} {
 		set 'step-at (v+ g-at (get DIRS step-dir))
-		
+
 		if arg-debug-verbose { print "Try: " (vstr step-at) sp }
 
 		if (! (board-in step-at)) {
@@ -313,10 +377,39 @@ while {return searching} {
 			# Case: We have escaped the board.
 			# Don't update the board or guard, just quit.
 			set 'step-done true
-			set 'searching nil
+			if (= time-mode SPECULATE) { # Notice: Timing means that we hit this on *frame one* of time-mode 1
+				print " REBOOT"
+				set 'step-reboot true
+				push inserts 'time-place
+				set 'step-board board
+				set 'time-mode REAL
+				set 'g-at  time-backup-at
+				set 'g-dir time-backup-dir
+				set 'time-mode REAL
+			} {
+				set 'searching nil
+			}
 		} {
-			set 'step-tile (board-get step-at)
-			if (= step-tile WALL) {
+			set 'step-tile (board-get step-board step-at)
+
+			if step-place {
+				set 'step-code (board-code step-at)
+				set 'step-place nil
+				if (! (|| (= step-tile WALL) (has already-tried step-code))) {
+					print "PLACE "
+					set 'step-tile PLAYER-WALL
+					set 'time-place step-at
+					set 'time-backup-at g-at
+					set 'time-backup-dir g-dir
+					set 'step-board (board-dup board)
+					board-set step-board step-at PLAYER-WALL
+					set '_b_d_r nil # Clean large garbage
+					set already-tried step-code true
+					set 'time-mode SPECULATE
+				} 
+			}
+
+			if (|| (= step-tile WALL) (= step-tile PLAYER-WALL)) {
 				if arg-debug-verbose { print "ROT " }
 
 				# Case: Our candidate space is occupied. Rotate.
@@ -336,18 +429,24 @@ while {return searching} {
 		set 'step-tried (+ step-tried 1)
 	}
 
-	if searching {
+	if (&& searching (! step-reboot)) {
 		if step-done {
 			if (= step-tile (+ g-dir 4)) {
 				fail "Guard loop in alpha timeline"
 			} {
 				set 'g-dir step-dir
-				set 'g-at step-at
 
 				if (board-free step-tile) {
 					# Case: The space has never been visited before.
-					set (get board (get g-at 1)) (get g-at 0) (+ VISIT g-dir)
+					board-set step-board g-at (+ VISIT g-dir)
+					set '_b_d_r nil # Clean large garbage
+
+					if (= time-mode REAL) {
+						set 'time-mode nil
+					}
 				}
+
+				set 'g-at step-at
 			}
 		} {
 			print ln
@@ -358,6 +457,6 @@ while {return searching} {
 	set 'g-step (+ g-step 1) # For debugging
 }
 
-if (&& arg-debug (! arg-debug-verbose)) { board-print }
+if (&& arg-debug (! arg-debug-verbose)) { board-print board }
 
-print ln "Steps: " g-step
+print ln "Steps: " g-step " Inserts:" (len inserts) ln
