@@ -174,7 +174,7 @@ set 'g-step 0
 
 set 'board []
 set 'inserts []
-set 'already-tried (make-dict) # FIXME: This changes nothing and can be removed.
+set 'turns (make-dict) # FIXME: This changes nothing and can be removed.
 
 # Input
 
@@ -332,8 +332,22 @@ set 'board-dup {
 # Unique hash for a cell
 # Argument: v
 set 'board-code {
-	inset args '(_v_1)
-	+ (* (get _v_1 1) x-len) (get _v_1 0)
+	inset args '(_v_1 _v_2)
+	+ \
+		(get _v_1 0) \
+		(* (get _v_1 1) x-len) \
+		(* (* x-len (len board)) _v_2)
+}
+
+set 'hash-dup {
+	inset args '(_h_d)
+	set '_h_v (make-dict)
+	set '_h_d (keys _h_d)
+	for '_h_i 0 (len _h_d) {
+		set _h_v (get _h_d _h_i) true
+	}
+	set '_h_d nil
+	return _h_v
 }
 
 set 'searching (board-in g-at)
@@ -342,6 +356,7 @@ set 'time-place nil
 set 'time-backup-at nil
 set 'time-backup-dir nil
 set 'step-board board
+set 'step-turns turns
 
 # One iteration of this loop is one step of the guard
 while {return searching} {
@@ -378,33 +393,27 @@ while {return searching} {
 			# Don't update the board or guard, just quit.
 			set 'step-done true
 			if (= time-mode SPECULATE) { # Notice: Timing means that we hit this on *frame one* of time-mode 1
-				print " REBOOT"
 				set 'step-reboot true
-				push inserts 'time-place
-				set 'step-board board
-				set 'time-mode REAL
-				set 'g-at  time-backup-at
-				set 'g-dir time-backup-dir
-				set 'time-mode REAL
 			} {
 				set 'searching nil
 			}
 		} {
 			set 'step-tile (board-get step-board step-at)
+			set 'step-code (board-code step-at step-dir)
 
 			if step-place {
-				set 'step-code (board-code step-at)
 				set 'step-place nil
-				if (! (|| (= step-tile WALL) (has already-tried step-code))) {
-					print "PLACE "
+				if (!= step-tile WALL) {
+					if arg-debug-verbose { print "PLACE " }
 					set 'step-tile PLAYER-WALL
 					set 'time-place step-at
 					set 'time-backup-at g-at
 					set 'time-backup-dir g-dir
 					set 'step-board (board-dup board)
+					set 'step-turns (hash-dup turns)
+					set '_h_v nil # Clean large garbage
 					board-set step-board step-at PLAYER-WALL
 					set '_b_d_r nil # Clean large garbage
-					set already-tried step-code true
 					set 'time-mode SPECULATE
 				} 
 			}
@@ -412,8 +421,22 @@ while {return searching} {
 			if (|| (= step-tile WALL) (= step-tile PLAYER-WALL)) {
 				if arg-debug-verbose { print "ROT " }
 
-				# Case: Our candidate space is occupied. Rotate.
-				set 'step-dir (% (+ step-dir 7) 4) # We use euler angles, the problem doesn't
+				if (get step-turns step-code) {
+					if arg-debug-verbose { print "LOOP! " }
+
+					if (= time-mode REAL) {
+						fail "Guard loop in alpha timeline"
+					} {
+						push inserts time-place
+						set 'step-reboot true
+						set 'step-done true
+					}
+				} {
+					set step-turns step-code true
+
+					# Case: Our candidate space is occupied. Rotate.
+					set 'step-dir (% (+ step-dir 7) 4) # We use euler angles, the problem doesn't
+				}
 			} {
 				if arg-debug-verbose { print "SUCCESS" }
 
@@ -429,11 +452,16 @@ while {return searching} {
 		set 'step-tried (+ step-tried 1)
 	}
 
-	if (&& searching (! step-reboot)) {
-		if step-done {
-			if (= step-tile (+ g-dir 4)) {
-				fail "Guard loop in alpha timeline"
-			} {
+	if step-reboot {
+		if arg-debug-verbose { print "REBOOT" ln }
+		set 'step-board board
+		set 'step-turns turns
+		set 'g-at  time-backup-at
+		set 'g-dir time-backup-dir
+		set 'time-mode REAL
+	} {
+		if searching {
+			if step-done {
 				set 'g-dir step-dir
 
 				if (board-free step-tile) {
@@ -447,10 +475,10 @@ while {return searching} {
 				}
 
 				set 'g-at step-at
+			} {
+				print ln
+				fail "Guard loop in alpha timeline"
 			}
-		} {
-			print ln
-			fail "Guard trapped?"
 		}
 	}
 
