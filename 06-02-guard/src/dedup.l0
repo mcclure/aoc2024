@@ -1,0 +1,99 @@
+# Advent of Code 2025, day 6, part 2 -- helper script, similar to "uniq"
+
+set 'PRINT-TITLE nil
+set 'PRINT-LINE nil
+set 'PRINT-UNIQUE true
+
+set 'noop {return nil}
+
+# Usage: if conditional {case1} {case2}
+set 'if {
+	inset args '(_if_cond _if_true _if_false) # Mass-assign sugar
+	set '_if_pair [return noop, return _if_false]
+	set '_if_pair [
+		get _if_pair (to-int (to-bool _if_false))
+		return _if_true
+	]
+	(get _if_pair (to-int (to-bool _if_cond))) # Extra () means execute
+}
+
+# Usage if {conditional} {case}
+set 'while {
+	inset args '(_while_cond _while_true)
+	set '_while_pair [return noop]
+	push _while_pair [ # Construct fn as data so we don't have to think about
+		return [make-quote _while_true] # ..variable shadowing when recursing
+		return [return 'while, make-quote _while_cond, make-quote _while_true]
+	]
+	(get _while_pair (to-int (to-bool (_while_cond))))
+}
+
+set '<0 { != 0 (& -9223372036854775808 (get args 0)) }
+set '< {
+	<0 (- (get args 0) (get args 1))
+}
+set '>= { ! (< (get args 0) (get args 1)) }
+set '<= { # No, these variable names aren't great
+	inset args '(_<=_x  _<=_y)
+	|| (=  _<=_x  _<=_y) (<  _<=_x  _<=_y)
+}
+set '> { ! (<= (get args 0) (get args 1)) }
+
+# Usage for 'varname from to {case} step
+set 'for {
+	inset args '(_for_var  _for_from  _for_to  _for_case  _for_step) 
+	if (! _for_step) {
+		set '_for_step \
+			(if (<  _for_from  _for_to) {return 1} {return -1})
+	}
+
+	set _for_var _for_from
+
+	# Construct to inline vars
+	[return [
+		return 'while
+		make-quote [return [return !=, return _for_var, return _for_to]]
+		make-quote [
+	        return [make-quote _for_case]
+	        return [return set, make-quote _for_var, return [
+				return '+, return _for_var, return _for_step
+			]]
+		]
+	]]
+}
+
+# Program
+
+set 'seen (make-dict)
+set 'global-args args
+set 'line-count 0
+
+for 'aidx 0 (len args) {
+	set 'arg (get global-args aidx)
+	if PRINT-TITLE {
+		print arg ln
+	}
+	file-in arg
+	while {
+		set 'line (read-line)
+		return line
+	} {
+		if (> (len line) 3) {
+			if PRINT-LINE {
+				print "-" line "-" ln
+			}
+			set 'line-count (+ line-count 1)
+			set seen line true
+		}
+	}
+	file-in nil
+}
+
+if PRINT-UNIQUE {
+	set 'keys (keys seen)
+	for 'aidx 0 (len keys) {
+		print "--" (get keys aidx) "--" ln
+	}
+}
+
+print "lines " line-count " unique " (len seen) ln

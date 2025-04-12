@@ -1,3 +1,41 @@
 Without time travel, required steps:
 sample: 44
 puzzle: 5950
+
+Board: 130 x 130
+Guard: ▲ [65, 37]
+
+---
+
+Run 1:
+
+Crashes most likely in 1600-1650 range
+
+0 - 900 : 97
+900 - 1500 : 157
+1500 - 1600 : 26
+1600 - 1650 : 19
+1650 - 1900 : 60
+1900 - 2700 : 205
+2700 - 3600 : 400
+3600 - 3800 : 95
+3800 - 4100 : 99
+4100 - 4600 : 249
+4600 - 4800 : 97
+4800 - 5100 : 197
+5100 - 5200 : 55
+5200 - 5950 : 466
+
+157 + 26 + 19 + 60 + 205 + 400 + 95 + 99 + 249 + 97 + 197 + 55 + 466 = 2125
+
+---
+
+Run 2 (with dedup)
+
+uniq try 1: lines 2222 unique 2075
+
+97 MISSING FIRST TIME
+
+starting position is in list = 2074
+
+---

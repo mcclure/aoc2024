@@ -1,5 +1,5 @@
 git submodules update --init --recursive
 
-(cd ../06-01-guard/lisp0 && cargo build --release)
+(cd ../06-01-guard/lisp0 && cargo build --release --features debug-gc)
 
-../06-01-guard/lisp0/target/release/lisp0 src/puzzle.l0 -- data/puzzle.txt 0 1 1 5951 100
+../06-01-guard/lisp0/target/release/lisp0 src/puzzle.l0 -- data/puzzle.txt 0 1 1 5951 100 0 1500 scratch/out
