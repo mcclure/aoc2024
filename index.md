@@ -10,4 +10,4 @@ Explanation: https://mastodon.social/@mcc/113743302074837530
 3. Multiply: x86_64 assembly, gas assembler
 4. Word search: FORTRAN
 5. Ordering: Tcl [1TH 9650]
-6. Guard: Unnamed experimental LISP I created just for this project [2TH 2125] [2TH 2075] [2TH 2074]
+6. Guard: Unnamed experimental LISP I created just for this project [2TH 2125] [2TH 2075] [2TH 2074] [2? 1979]

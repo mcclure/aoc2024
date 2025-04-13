@@ -280,10 +280,10 @@ set 'board-print {
 	inset args '(_b_b)
 	for 'y 0 (len _b_b) {
 		for 'x 0 x-len {
-			if (v= g-at (v x y)) {
+			set 'tile (get (get _b_b y) x)
+			if (&& (!= tile PLAYER-WALL) (v= g-at (v x y))) {
 				print (get CHARS g-dir)
 			} {
-				set 'tile (get (get _b_b y) x)
 				print (get CHARS tile)
 			}
 		}
@@ -424,7 +424,7 @@ while {return searching} {
 
 			if step-place {
 				set 'step-place nil
-				if (!= step-tile WALL) {
+				if (= step-tile FREE) { # Walls *or* previous steps block this
 					if arg-debug-verbose { print "PLACE " }
 					set 'step-tile PLAYER-WALL
 					set 'time-place step-at
@@ -506,7 +506,9 @@ while {return searching} {
 				set 'g-at step-at
 
 				set 'g-step (+ g-step 1) # Count we took a step -- important
-				if (&& (!= time-mode SPECULATE) (= 0 (% g-step print-on-step))) {
+				if (&& (!= time-mode SPECULATE) \ # Print status on periodic real steps
+					 (if print-on-step { = 0 (% g-step print-on-step) } {return true}) \
+				   ) {
 					print "        " g-step "/" expected-steps " steps" ln
 				}
 			} {

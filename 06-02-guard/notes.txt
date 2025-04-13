@@ -39,3 +39,13 @@ uniq try 1: lines 2222 unique 2075
 starting position is in list = 2074
 
 ---
+
+Run 3/4 (dedup, do not place speculative walls on > ^ < v) (REMEMBER STARTING SQUARE)
+
+"Fixed" run 1
+lines 1993 unique 1979
+
+"Fixed" run 2
+lines 1990 unique 1979
+
+(still wrong)
