@@ -1,0 +1,529 @@
+# Advent of Code 2025, day 6, part 2 -- solution
+# "Simpler" / unoptimized version --
+
+set 'noop {return nil}
+
+# Usage: if conditional {case1} {case2}
+set 'if {
+	inset args '(_if_cond _if_true _if_false) # Mass-assign sugar
+	set '_if_pair [return noop, return _if_false]
+	set '_if_pair [
+		get _if_pair (to-int (to-bool _if_false))
+		return _if_true
+	]
+	(get _if_pair (to-int (to-bool _if_cond))) # Extra () means execute
+}
+
+# Usage if {conditional} {case}
+set 'while {
+	inset args '(_while_cond _while_true)
+	set '_while_pair [return noop]
+	push _while_pair [ # Construct fn as data so we don't have to think about
+		return [make-quote _while_true] # ..variable shadowing when recursing
+		return [return 'while, make-quote _while_cond, make-quote _while_true]
+	]
+	(get _while_pair (to-int (to-bool (_while_cond))))
+}
+
+set '<0 { != 0 (& -9223372036854775808 (get args 0)) }
+set '< {
+	<0 (- (get args 0) (get args 1))
+}
+set '>= { ! (< (get args 0) (get args 1)) }
+set '<= { # No, these variable names aren't great
+	inset args '(_<=_x  _<=_y)
+	|| (=  _<=_x  _<=_y) (<  _<=_x  _<=_y)
+}
+set '> { ! (<= (get args 0) (get args 1)) }
+
+# Helpers -- flow control -- 2
+
+# Usage for 'varname from to {case} step
+set 'for {
+	inset args '(_for_var  _for_from  _for_to  _for_case  _for_step) 
+	if (! _for_step) {
+		set '_for_step \
+			(if (<  _for_from  _for_to) {return 1} {return -1})
+	}
+
+	set _for_var _for_from
+
+	# Construct to inline vars
+	[return [
+		return 'while
+		make-quote [return [return !=, return _for_var, return _for_to]]
+		make-quote [
+	        return [make-quote _for_case]
+	        return [return set, make-quote _for_var, return [
+				return '+, return _for_var, return _for_step
+			]]
+		]
+	]]
+}
+
+set 'match {
+	inset args '(_match_key _match_table _match_default)
+	set '_match_at 0
+	set '_match_to (len _match_table)
+	set '_match_result nil
+
+#	print (get (get _match_table 0) 0) ln
+
+	while {&& (! _match_result) (< _match_at _match_to)} {
+		set '_match_line (get _match_table _match_at)
+#		print "tst" _match_line sp _match_key sp (get _match_line 0) sp "?" (= _match_key (get _match_line 0)) ln
+		if (= _match_key (get _match_line 0)) {
+			set '_match_result (get _match_line 1)
+		} {
+			set '_match_at (+ _match_at 1)
+		}
+	}
+
+	set '_match_table nil # Clear these, they might be large...
+	set '_match_line nil
+
+	if _match_result {
+		_match_result
+	} {
+		if _match_default {
+			_match_default
+		}
+	}
+}
+
+# Vectors
+
+set 'v { return [get args 0, get args 1] }
+
+set 'v+ {
+	inset args '(_v_1 _v_2)
+	v \
+		(+ (get _v_1 0) (get _v_2 0)) \
+		(+ (get _v_1 1) (get _v_2 1))
+}
+
+set 'vneg {
+	inset args '(_v_1)
+	v (neg (get _v_1 0)) (neg (get _v_2 0))
+}
+
+set 'v= {
+	inset args '(_v_1 _v_2)
+	&& \
+		(= (get _v_1 0) (get _v_2 0)) \
+		(= (get _v_1 1) (get _v_2 1))
+}
+
+set 'vstr {
+	inset args '(_v_1)
+	+ "[" (get _v_1 0) ", " (get _v_1 1) "]"
+}
+
+# Program
+
+inset args '(arg-file arg-debug-verbose arg-debug allow-time-travel expected-steps print-on-step time-travel-start time-travel-end out-file-prefix)
+
+if (< (len args) 1) {
+	fail "No arguments" ln
+}
+
+# Constants
+
+set 'RIGHT   0
+set 'UP      1
+set 'LEFT    2
+set 'DOWN    3
+set 'VISIT    4
+set 'VISIT-RIGHT 4
+set 'VISIT-UP    5
+set 'VISIT-LEFT  6
+set 'VISIT-DOWN  7
+set 'FREE    8
+set 'WALL    9
+set 'PLAYER-WALL 10
+
+set 'SPECULATE 1
+set 'REAL 0
+
+set 'DIRS [
+	v  1  0
+	v  0 -1
+	v -1  0
+	v  0  1
+]
+
+set 'CHARS '(▶ ▲ ◀ ▼ > ^ < v .) # Consider: » 🠅 « 🠇
+push CHARS "#" 'X # Oops, hard to escape #
+
+# Interpret debug args
+set 'arg-debug-verbose (&& arg-debug-verbose (!= arg-debug-verbose "0"))
+set 'arg-debug (|| arg-debug-verbose (&& arg-debug (!= arg-debug "0")))
+set 'allow-time-travel ( \
+	if (= allow-time-travel "0") { return nil } { return true } \
+)
+if expected-steps { set 'expected-steps (to-int expected-steps) }
+if print-on-step { set 'print-on-step (to-int print-on-step) } {
+	if expected-steps { set 'print-on-step 10 }
+}
+set 'time-travel-start (if time-travel-start { to-int time-travel-start } { return 0 })
+
+if time-travel-end {
+	set 'time-travel-end (to-int time-travel-end)
+	if (= time-travel-end 0) { set 'time-travel-end nil }
+}
+
+set 'out-file nil
+if out-file-prefix {
+	set 'out-file (+ out-file-prefix "/" time-travel-start "-" (if time-travel-end {return time-travel-end} {return ""}) ".txt" )
+	file-out out-file true true
+	file-out nil
+}
+
+print "Args: debug: " arg-debug " verbose: " arg-debug-verbose " time travel? " allow-time-travel \
+      " print " print-on-step " of " expected-steps " steps, time travel " time-travel-start " to " \
+      time-travel-end ", save to " out-file ln
+
+# Vars
+
+set 'x-len nil
+set 'g-at nil
+set 'g-dir nil
+
+set 'board []
+set 'inserts []
+set 'turns (make-dict) # FIXME: This changes nothing and can be removed.
+
+# Input
+
+file-in arg-file
+
+while {
+	set 'line (read-line)
+	return line
+} {
+	set 'line-len (len line)
+
+	if (> line-len 0) {
+		if (! x-len) {
+			set 'x-len line-len
+		} {
+			if (!= line-len x-len) {
+				fail "Lines of inconsistent length (" line-len ", " x-len ")"
+			}
+		}
+
+		set 'guard-found {
+			inset args '(tmp-dir)
+			if g-dir {
+				fail "Multiple guards"
+			} {
+				set 'g-dir tmp-dir
+				set 'g-at (v x (len board))
+			}
+		}
+
+		# This line is good, parse it
+		set 'line-tile []
+		for 'x 0 line-len {
+			set 'char (get line x)
+
+			set 'tile (match char [
+				return [return ".", return {
+					return FREE
+				}]
+
+				return [return "#", return {
+					return WALL
+				}]
+
+				return [return ">", return {
+					guard-found RIGHT
+					return FREE
+				}]
+
+				return [return "v", return {
+					guard-found DOWN
+					return FREE
+				}]
+
+				return [return "<", return {
+					guard-found LEFT
+					return FREE
+				}]
+
+				return [return "^", return {
+					guard-found UP
+					return FREE
+				}]
+			] {
+				fail "Unrecognized character " char
+			})
+
+			push line-tile tile
+		}
+		push board line-tile
+	}
+}
+
+file-in nil
+
+if arg-debug {
+	print "Board: " x-len " x " (len board) ln
+	print "Guard: " (get CHARS g-dir) sp (vstr g-at) ln
+}
+
+# No arguments
+set 'board-print {
+	inset args '(_b_b)
+	for 'y 0 (len _b_b) {
+		for 'x 0 x-len {
+			set 'tile (get (get _b_b y) x)
+			if (&& (!= tile PLAYER-WALL) (v= g-at (v x y))) {
+				print (get CHARS g-dir)
+			} {
+				print (get CHARS tile)
+			}
+		}
+		print ln
+	}
+	set '_b_b nil # Clean large garbage
+}
+
+# Argument: v
+set 'board-in {
+	inset args '(_b_in)
+	&& \
+		(<= 0 (get _b_in 0))           \
+		(<= 0 (get _b_in 1))           \
+		(>  x-len       (get _b_in 0)) \
+		(>  (len board) (get _b_in 1))
+}
+
+# Argument: v
+set 'board-get {
+	inset args '(_b_b _b_in)
+	set '_b_r (get (get _b_b (get _b_in 1)) (get _b_in 0))
+	set '_b_b nil # Clean large garbage
+	return _b_r
+}
+
+set 'board-set {
+	inset args '(_b_s_b _b_s_a _b_s_v)
+	set (get  _b_s_b  (get  _b_s_a  1)) (get  _b_s_a  0)  _b_s_v
+	set '_b_s_b nil
+	set '_b_s_a nil
+	set '_b_s_v nil
+}
+
+# Argument: Tile
+set 'board-free {
+	inset args '(_b_in)
+	&& \
+		(>= _b_in VISIT-RIGHT) \
+		(<= _b_in FREE)
+}
+
+# Argument: Array
+set 'array-dup {
+	inset args '(_a_d_a)
+	set '_a_d_r []
+	for '_a_d_x 0 (len _a_d_a) {
+		push _a_d_r (get  _a_d_a  _a_d_x)
+	}
+	set '_a_d_a nil # Clean large garbage
+	return _a_d_r
+}
+
+# Argument: 2D-Array
+set 'board-dup {
+	inset args '(_b_d_a)
+	set '_b_d_r []
+	for '_b_d_x 0 (len _b_d_a) {
+		push _b_d_r (array-dup (get  _b_d_a  _b_d_x))
+	}
+	set '_b_d_a nil # Clean large garbage
+	set '_a_d_r nil # Clean large garbage
+	return _b_d_r
+}
+
+# Argument: 2D-Array -- copy FROM arg1 TO arg0
+set 'board-copy {
+	inset args '(_b_d_a_2 _b_d_a_1) # Array
+	
+	for '_b_d_y 0 (len  _b_d_a_1) {
+		set '_b_d_r_1 (get  _b_d_a_1  _b_d_y) # Row
+		set '_b_d_r_2 (get  _b_d_a_2  _b_d_y)
+		for '_b_d_x 0 (len _b_d_r_1) {
+			set  _b_d_r_2  _b_d_x  (get  _b_d_r_1  _b_d_x)
+		}
+	}
+	set '_b_d_a_1 nil
+	set '_b_d_a_2 nil
+	set '_b_d_r_1 nil
+	set '_b_d_r_2 nil
+}
+
+# Unique hash for a cell
+# Argument: v
+set 'board-code {
+	inset args '(_v_1 _v_2)
+	+ \
+		(get _v_1 0) \
+		(* (get _v_1 1) x-len) \
+		(* (* x-len (len board)) _v_2)
+}
+
+set 'hash-dup {
+	inset args '(_h_d)
+	set '_h_v (make-dict)
+	set '_h_d (keys _h_d)
+	for '_h_i 0 (len _h_d) {
+		set _h_v (get _h_d _h_i) true
+	}
+	set '_h_d nil
+	return _h_v
+}
+
+set 'step-board (board-dup board)
+set 'time-backup-at g-at
+set 'time-backup-dir g-dir
+
+set 'board-search {
+	inset args '(pass-place pass-first)
+
+	set 'searching (board-in g-at)
+	set 'step-turns (make-dict)
+	set 'g-step 0
+
+	if (! pass-first) {
+		board-copy step-board board
+		set 'g-at time-backup-at
+		set 'g-dir time-backup-dir
+	}
+
+	if pass-place {
+		board-set step-board pass-place PLAYER-WALL
+	}
+
+	# One iteration of this loop is one step of the guard
+	while {return searching} {
+		# One iteration of this loop is one compass direction checked
+		set 'step-done nil
+		set 'step-success nil
+		set 'step-tried 0
+		set 'step-dir g-dir
+		set 'step-reboot nil
+
+		if arg-debug-verbose {
+			print ln "  -- step" sp g-step
+			print ln ln
+			board-print step-board 
+		}
+
+		while {&& (! step-done) (< step-tried 4)} {
+			set 'step-at (v+ g-at (get DIRS step-dir))
+
+			if arg-debug-verbose { print "Try: " (vstr step-at) sp }
+
+			if (! (board-in step-at)) {
+				if arg-debug-verbose { print "OUT" }
+
+				# Case: We have escaped the board.
+				# Don't update the board or guard, just quit.
+				set 'step-done true
+				set 'searching nil
+			} {
+				set 'step-tile (board-get step-board step-at)
+				set 'step-code (board-code g-at step-dir) # Uniquely identify a "turn" by stand position + dir
+
+				if (|| (= step-tile WALL) (= step-tile PLAYER-WALL)) {
+					if arg-debug-verbose { print "ROT " }
+
+					if (get step-turns step-code) {
+						if arg-debug-verbose { print "LOOP! " }
+
+						if (! allow-time-travel) {
+							fail "Guard loop in alpha timeline"
+						} {
+							push inserts pass-place
+							if print-on-step { print "Inserts: " (len inserts) ln }
+							if out-file {
+								file-out out-file
+								print (vstr pass-place) ln
+								file-out nil
+							}
+							set 'step-done true
+							set 'searching nil
+						}
+					} {
+						set step-turns step-code true
+
+						# Case: Our candidate space is occupied. Rotate.
+						set 'step-dir (% (+ step-dir 7) 4) # We use euler angles, the problem doesn't
+					}
+				} {
+					if arg-debug-verbose { print "SUCCESS" }
+
+					# Case: candidate space unoccupied
+					set 'step-done true
+					set 'step-success true
+				}
+			}
+
+			if arg-debug-verbose { print ln }
+
+			# Only try 4 times then give up.
+			set 'step-tried (+ step-tried 1)
+		}
+
+		if searching {
+			if step-done {
+				set 'g-dir step-dir
+
+				if (board-free step-tile) {
+					# Case: The space has never been visited before.
+					board-set step-board g-at (+ VISIT g-dir)
+					set '_b_d_r nil # Clean large garbage
+				}
+
+				set 'g-at step-at
+
+				set 'g-step (+ g-step 1) # Count we took a step
+			} {
+				print ln
+				fail "Guard loop in alpha timeline"
+			}
+		}
+	}
+}
+
+if allow-time-travel {
+	set 'time-first true
+	set 'y-len (len board)
+	for 'big-y 0 y-len {
+		for 'big-x 0 x-len {
+			board-search (v big-x big-y) time-first
+
+			if time-first {
+				set 'time-first nil
+			}
+
+#			print "(at " big-x ", " big-y " -- " g-step " steps)" ln ln
+#			board-print step-board
+#			print ln
+		}
+		print "Row " (+ big-y 1) " of " y-len
+	}
+} {
+	board-search nil true
+}
+
+if arg-debug {
+	print ln ln "FINAL" ln ln
+	for 'idx 0 (len inserts) {
+		board-set board (get inserts idx) PLAYER-WALL
+	}
+	board-print board
+}
+
+print ln "Steps: " g-step " Inserts:" (len inserts) ln
