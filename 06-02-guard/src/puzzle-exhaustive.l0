@@ -121,7 +121,7 @@ set 'vstr {
 
 # Program
 
-inset args '(arg-file arg-debug-verbose arg-debug allow-time-travel expected-steps print-on-step time-travel-start time-travel-end out-file-prefix)
+inset args '(arg-file arg-debug-verbose arg-debug allow-time-travel time-travel-start-row time-travel-end-row out-file-prefix)
 
 if (< (len args) 1) {
 	fail "No arguments" ln
@@ -161,27 +161,23 @@ set 'arg-debug (|| arg-debug-verbose (&& arg-debug (!= arg-debug "0")))
 set 'allow-time-travel ( \
 	if (= allow-time-travel "0") { return nil } { return true } \
 )
-if expected-steps { set 'expected-steps (to-int expected-steps) }
-if print-on-step { set 'print-on-step (to-int print-on-step) } {
-	if expected-steps { set 'print-on-step 10 }
-}
-set 'time-travel-start (if time-travel-start { to-int time-travel-start } { return 0 })
+set 'time-travel-start-row (if time-travel-start-row { to-int time-travel-start-row } { return 0 })
 
-if time-travel-end {
-	set 'time-travel-end (to-int time-travel-end)
-	if (= time-travel-end 0) { set 'time-travel-end nil }
+if time-travel-end-row {
+	set 'time-travel-end-row (to-int time-travel-end-row)
+	if (= time-travel-end-row 0) { set 'time-travel-end-row nil }
 }
 
 set 'out-file nil
 if out-file-prefix {
-	set 'out-file (+ out-file-prefix "/" time-travel-start "-" (if time-travel-end {return time-travel-end} {return ""}) ".txt" )
+	set 'out-file (+ out-file-prefix "/" time-travel-start-row "-" (if time-travel-end-row {return time-travel-end-row} {return ""}) ".txt" )
 	file-out out-file true true
 	file-out nil
 }
 
 print "Args: debug: " arg-debug " verbose: " arg-debug-verbose " time travel? " allow-time-travel \
-      " print " print-on-step " of " expected-steps " steps, time travel " time-travel-start " to " \
-      time-travel-end ", save to " out-file ln
+      " row " time-travel-start-row " to " \
+      time-travel-end-row ", save to " out-file ln
 
 # Vars
 
@@ -446,7 +442,7 @@ set 'board-search {
 							fail "Guard loop in alpha timeline"
 						} {
 							push inserts pass-place
-							if print-on-step { print "Inserts: " (len inserts) ln }
+							print "Inserts: " (len inserts) ln # Previously if print-on-step
 							if out-file {
 								file-out out-file
 								print (vstr pass-place) ln
@@ -500,7 +496,8 @@ set 'board-search {
 if allow-time-travel {
 	set 'time-first true
 	set 'y-len (len board)
-	for 'big-y 0 y-len {
+	if (! time-travel-end-row) { set 'time-travel-end-row y-len }
+	for 'big-y time-travel-start-row time-travel-end-row {
 		for 'big-x 0 x-len {
 			board-search (v big-x big-y) time-first
 
@@ -512,7 +509,7 @@ if allow-time-travel {
 #			board-print step-board
 #			print ln
 		}
-		print "Row " (+ big-y 1) " of " y-len
+		print "Row " (+ big-y 1) " of " y-len ln
 	}
 } {
 	board-search nil true
