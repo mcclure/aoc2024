@@ -420,7 +420,7 @@ while {return searching} {
 			}
 		} {
 			set 'step-tile (board-get step-board step-at)
-			set 'step-code (board-code step-at step-dir)
+			set 'step-code (board-code g-at step-dir) # Uniquely identify a "turn" by stand position + dir
 
 			if step-place {
 				set 'step-place nil
