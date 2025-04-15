@@ -49,3 +49,16 @@ lines 1993 unique 1979
 lines 1990 unique 1979
 
 (still wrong)
+
+---
+
+Run 5 ("Exhaustive")
+
+0-13 (no overlap)
+13-29 +7
+29-33 +14
+33-64 (no overlap)
+64-83 +2
+83-105 +3
+
+lines 2048 unique 2022 ( + 26 ) no 65,37
