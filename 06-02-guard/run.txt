@@ -4,6 +4,6 @@ git submodules update --init --recursive
 
 ../06-01-guard/lisp0/target/release/lisp0 --debug-mem-initial=134217728 src/puzzle.l0 -- data/puzzle.txt 0 1 1 5951 100 0 1500 scratch/out
 
-../06-01-guard/lisp0/target/release/lisp0 --debug-mem-initial=134217728 src/puzzle-exhaustive.l0 -- data/sample.6.txt 0 0 1 0 0 scratch/out
+../06-01-guard/lisp0/target/release/lisp0 --debug-mem-initial=134217728 src/puzzle-exhaustive.l0 -- data/sample.6.txt 0 1 1 0 0 scratch/out
 
 clear && ../06-01-guard/lisp0/target/release/lisp0 src/dedup.l0 -- scratch/out/*

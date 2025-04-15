@@ -265,7 +265,7 @@ file-in nil
 
 if arg-debug {
 	print "Board: " x-len " x " (len board) ln
-	print "Guard: " (get CHARS g-dir) sp (vstr g-at) ln
+	print "Guard: " (get CHARS g-dir) sp (vstr g-at) ln ln
 }
 
 # No arguments
@@ -509,7 +509,7 @@ if allow-time-travel {
 #			board-print step-board
 #			print ln
 		}
-		print "Row " (+ big-y 1) " of " y-len ln
+		print "Row " (+ big-y 1) " of " y-len " (index " big-y ") complete" ln
 	}
 } {
 	board-search nil true
