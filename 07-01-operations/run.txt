@@ -1,0 +1,3 @@
+# Omit -threaded
+
+ghc -O2 -rtsopts -odir bin -hidir bin --make src/puzzle.hs -o bin/puzzle && (cat data/input.txt | ./bin/puzzle)
