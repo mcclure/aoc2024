@@ -1,9 +1,10 @@
-module Main where
+import System.Environment
+import System.IO
 
 main :: IO ()
 main = do
-    l <- do
-        l <- getLine
-        return l
-    putStr l
+    [inFile] <- getArgs              -- TODO exceptional cases
+    file <- openFile inFile ReadMode
+    line <- hGetLine file            -- TODO do in loop
+    putStr line
     putStr "\n"
