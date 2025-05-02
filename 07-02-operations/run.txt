@@ -1,0 +1,3 @@
+# Omit -threaded
+
+cabal run operations -- data/input.txt
