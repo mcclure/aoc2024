@@ -4,6 +4,24 @@ import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
+import Control.Monad.Amb (Amb, aBoolean, isPossible)
+
+------- SEARCH --------
+
+composeMember :: Int -> [Int] -> Int -> Amb Bool Bool
+composeMember target [] accumulator = do
+    return (target == accumulator)
+composeMember target (i:rest) accumulator = do
+    isTimes <- aBoolean
+    newAccumulator <- if isTimes
+        then return (i+accumulator)
+        else return (i*accumulator)
+    composeMember target rest newAccumulator
+
+composeMembers :: Int -> [Int] -> Amb Bool Bool
+composeMembers target operands = composeMember target operands 0
+
+-------- PARSING --------
 
 type LineParser = Parsec Void String
 
@@ -22,20 +40,22 @@ parseLine = do
 
 -- Read a line, parse it to get a number, add it to total so far
 takeLine :: Handle -> Int -> IO Int
-takeLine inHandle acc =
+takeLine inHandle accumulator =
     do  inEof <- hIsEOF inHandle
         if inEof
-            then return acc
+            then return accumulator
             else do inStr <- hGetLine inHandle
                     (lsum, operands) <- case parse parseLine "DUMMY-FILE" inStr of
                         Right x -> return x
                         Left e -> error ("\n\nInvalid input\n\n" ++ show e)
-                    -- TODO: DO THINGS WITH "OPERANDS" ARRAY HERE
-                    takeLine inHandle (acc + lsum)
+                    let possible = isPossible (composeMembers lsum operands)
+                    takeLine inHandle (if possible then accumulator + lsum else accumulator)
 
 -- Initial case for takeLine
 takeLines :: Handle -> IO Int
 takeLines inHandle = do takeLine inHandle 0
+
+-------- INTERFACE --------
 
 -- Read one value from command line, feed it to takeLines, print result
 main :: IO ()
