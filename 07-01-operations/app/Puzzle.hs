@@ -8,7 +8,7 @@ import Control.Monad.Amb (Amb, aBoolean, isPossible)
 
 ------- SEARCH --------
 
-composeMember :: Int -> [Int] -> Int -> Amb Bool Bool
+composeMember :: Integer -> [Integer] -> Integer -> Amb Bool Bool
 composeMember target [] accumulator = do
     return (target == accumulator)
 composeMember target (i:rest) accumulator = do
@@ -18,19 +18,19 @@ composeMember target (i:rest) accumulator = do
         else return (i*accumulator)
     composeMember target rest newAccumulator
 
-composeMembers :: Int -> [Int] -> Amb Bool Bool
+composeMembers :: Integer -> [Integer] -> Amb Bool Bool
 composeMembers target operands = composeMember target operands 0
 
 -------- PARSING --------
 
 type LineParser = Parsec Void String
 
-spaceThenNumber :: LineParser Int
+spaceThenNumber :: LineParser Integer
 spaceThenNumber = do
     _ <- hspace1 -- Commenting this line out breaks it
     L.decimal
 
-parseLine :: LineParser (Int, [Int])
+parseLine :: LineParser (Integer, [Integer])
 parseLine = do
     lsum <- L.decimal
     _ <- char ':'
@@ -39,7 +39,7 @@ parseLine = do
     return (lsum, nums)
 
 -- Read a line, parse it to get a number, add it to total so far
-takeLine :: Handle -> Int -> IO Int
+takeLine :: Handle -> Integer -> IO Integer
 takeLine inHandle accumulator =
     do  inEof <- hIsEOF inHandle
         if inEof
@@ -52,7 +52,7 @@ takeLine inHandle accumulator =
                     takeLine inHandle (if possible then accumulator + lsum else accumulator)
 
 -- Initial case for takeLine
-takeLines :: Handle -> IO Int
+takeLines :: Handle -> IO Integer
 takeLines inHandle = do takeLine inHandle 0
 
 -------- INTERFACE --------
