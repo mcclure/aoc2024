@@ -1,0 +1,1 @@
+fennel src/puzzle.fnl data/puzzle.txt
