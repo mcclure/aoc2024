@@ -1,0 +1,1 @@
+fennel --add-package-path "../08-01-stations/cpml/modules/?.lua" src/puzzle.fnl ../08-01-stations/data/puzzle.txt
