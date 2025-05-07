@@ -4,4 +4,4 @@
 	branch = 2025-04-07
 [submodule "cpml"]
 	path = 08-01-stations/cpml
-	url = git@github.com:excessive/cpml.git
+	url = git@github.com:mcclure/cpml.git
