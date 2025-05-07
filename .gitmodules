@@ -2,3 +2,6 @@
 	path = 06-01-guard/lisp0
 	url = git@github.com:mcclure/lisp0-experiment.git
 	branch = 2025-04-07
+[submodule "cpml"]
+	path = 08-01-stations/cpml
+	url = git@github.com:excessive/cpml.git
