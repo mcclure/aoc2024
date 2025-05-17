@@ -14,18 +14,24 @@ procedure Puzzle is
       procedure Run(Mem_Len : Natural) is
          Line_Idx  : Natural range 1..20001;
          File_Id   : Natural;
+         File_Cand : Integer range -1..Integer'Last;
          Mem_Idx_Tmp : Natural range 1..Mem_Len;
          Mem_Idx_From : Natural range 1..Mem_Len;
          Mem_Idx_To : Natural range 1..Mem_Len;
          Mem_Idx   : Natural range 1..Mem_Len;
-         Mem       : Array (Natural range 1..Mem_Len) of Integer range -1..Integer'Last;
+         Mem       : Array (Natural range 1..Mem_Len) of Integer range -1..Integer'Last := (Others => -1);
       begin
          -- Actual program here
          File_Id := 0;
          Mem_Idx := 1;
+
+         -- Populate Mem based on instructions in Line
          for Line_Idx in 1..Line_Last loop
+            -- One digit of line
             Temp_Digit := Character'Pos(Line(Line_Idx)) - Character'Pos('0');
+
             --Put_Line (Item => "Bump" & Natural'Image(Mem_Idx) & " + " & Natural'Image(Temp_Digit));
+
             if Line_Idx mod 2 = 1 then -- This is a block
                if Mem_Idx = 1 then -- This horrible thing so I can iterate without hitting 0 or +1 
                   Mem_Idx_From := 1;
@@ -34,17 +40,32 @@ procedure Puzzle is
                   Mem_Idx_From := Mem_Idx + 1;
                   Mem_Idx_To := Mem_Idx + Temp_Digit;
                end if;
+               -- Iterate over block filling out File Id
                for Mem_Idx_Tmp in Mem_Idx_From..Mem_Idx_To loop
                   --Put_Line (Item => "X " & Natural'Image(Mem_Idx_Tmp));
                   Mem(Mem_Idx_Tmp) := File_Id;
                   Mem_Idx := Mem_Idx_Tmp;
                end loop;
+
+               -- Need a new file id
                File_Id := File_Id + 1;
             else -- This is a skip
                --Put_Line (Item => "Y");
                Mem_Idx := Mem_Idx + Temp_Digit; -- Assumes odd length input strings
             end if;
          end loop;
+
+         -- Print data back out
+         for Mem_Idx in 1..Mem_Len loop
+            --Put( Item => "(" & Natural'Image(Mem_Idx) & ")" );
+            File_Cand := Mem(Mem_Idx);
+            if File_Cand >= 0 then
+               Put( Item => Integer'Image(File_Cand mod 10) );
+            else
+               Put( Item => " _" );
+            end if;
+         end loop;
+         Put_Line("");
 
          --Put_Line (Item => "Done" & Natural'Image(Mem_Len_Tmp));
       end;
