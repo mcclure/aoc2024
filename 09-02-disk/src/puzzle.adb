@@ -126,6 +126,7 @@ procedure Puzzle is
                end if;
             end loop;
 
+            -- Block found; copy
             if Success then
                Put_Line("File" & File_Id'Image & " len" & File_Size'Image & " move from" & Mem_Idx_From'Image & " to" & Mem_Idx_to'Image );
 
@@ -138,22 +139,6 @@ procedure Puzzle is
             end if;
 
             File_Id := File_Id - 1;
-         end loop;
-
-         while Mem_Idx_From > 1 and Mem_Idx_To < Mem_Idx_From loop
-            while Mem(Mem_Idx_To) >= 0 and Mem_Idx_To < Mem_Len loop -- Find blank space
-               Mem_Idx_To := Mem_Idx_To + 1;
-            end loop;
-
-            if Mem_Idx_To < Mem_Idx_From then
---               Put_Line("MOVE" & Integer'Image(Mem_Idx_From) & " TO " & Integer'Image(Mem_Idx_To));
-               Mem(Mem_Idx_To) := Mem(Mem_Idx_From);
-               Mem(Mem_Idx_From) := -1;
-            end if;
-
-            while Mem(Mem_Idx_From) < 0 and Mem_Idx_From > 1 loop
-               Mem_Idx_From := Mem_Idx_From - 1;
-            end loop;
          end loop;
 
          Dump;
