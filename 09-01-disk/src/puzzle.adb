@@ -95,6 +95,8 @@ procedure Puzzle is
 
          Dump;
 
+         -- Done; calculate checksum.
+
          Checksum := 0;
 
          for Mem_Idx in 1..Mem_Len loop
