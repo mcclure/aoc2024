@@ -1,1 +1,5 @@
 gnatmake src/puzzle.adb && (cat ../09-01-disk/data/input.txt | ./puzzle)
+
+gnatmake src/spark/puzzle.adb && (cat ../09-01-disk/data/input.txt | ./puzzle)
+
+./scratch/gnatprove-x86_64-linux-14.1.0-1/bin/gnatprove
