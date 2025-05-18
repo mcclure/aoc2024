@@ -20,6 +20,21 @@ procedure Puzzle is
          Mem_Idx_To : Natural range 1..Mem_Len;
          Mem_Idx   : Natural range 1..Mem_Len;
          Mem       : Array (Natural range 1..Mem_Len) of Integer range -1..Integer'Last := (Others => -1);
+         Checksum  : Long_Integer;
+         procedure Dump is
+         begin
+            -- Print data back out
+            for Mem_Idx in 1..Mem_Len loop
+               --Put( Item => "(" & Natural'Image(Mem_Idx) & ")" );
+               File_Cand := Mem(Mem_Idx);
+               if File_Cand >= 0 then
+                  Put( Item => Integer'Image(File_Cand mod 10) );
+               else
+                  Put( Item => " _" );
+               end if;
+            end loop;
+            Put_Line("");
+         end;
       begin
          -- Actual program here
          File_Id := 0;
@@ -55,17 +70,42 @@ procedure Puzzle is
             end if;
          end loop;
 
-         -- Print data back out
+         Dump;
+
+         -- Work toward center "ugly defragmenting" drive
+
+         Mem_Idx_To := 1;
+         Mem_Idx_From := Mem_Len;
+
+         while Mem_Idx_From > 1 and Mem_Idx_To < Mem_Idx_From loop
+            while Mem(Mem_Idx_To) >= 0 and Mem_Idx_To < Mem_Len loop -- Find blank space
+               Mem_Idx_To := Mem_Idx_To + 1;
+            end loop;
+
+            if Mem_Idx_To < Mem_Idx_From then
+--               Put_Line("MOVE" & Integer'Image(Mem_Idx_From) & " TO " & Integer'Image(Mem_Idx_To));
+               Mem(Mem_Idx_To) := Mem(Mem_Idx_From);
+               Mem(Mem_Idx_From) := -1;
+            end if;
+
+            while Mem(Mem_Idx_From) < 0 and Mem_Idx_From > 1 loop
+               Mem_Idx_From := Mem_Idx_From - 1;
+            end loop;
+         end loop;
+
+         Dump;
+
+         Checksum := 0;
+
          for Mem_Idx in 1..Mem_Len loop
-            --Put( Item => "(" & Natural'Image(Mem_Idx) & ")" );
             File_Cand := Mem(Mem_Idx);
             if File_Cand >= 0 then
-               Put( Item => Integer'Image(File_Cand mod 10) );
-            else
-               Put( Item => " _" );
+               Checksum := Checksum + Long_Integer(File_Cand)*Long_Integer(Mem_Idx-1);
             end if;
          end loop;
+
          Put_Line("");
+         Put_Line(Long_Integer'Image(Checksum));
 
          --Put_Line (Item => "Done" & Natural'Image(Mem_Len_Tmp));
       end;
