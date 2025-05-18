@@ -1,0 +1,1 @@
+gnatmake src/puzzle.adb && (cat ../09-01-disk/data/input.txt | ./puzzle)
