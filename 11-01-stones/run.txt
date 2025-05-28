@@ -1,0 +1,13 @@
+# Install wat2wasm/wasm-interp from apt `wabt` package-- I got 1.0.36
+# Install wasmtime through `cargo install wasmtime-cli`-- I got 33.0.0
+
+wat2wasm src/test/trivial.wast -o bin/trivial.wasm
+od -t x1 bin/trivial.wasm
+
+wat2wasm src/test/simple.wast -o bin/simple.wasm
+wasm-interp bin/simple.wasm -r add -a i32:1 -a i32:2
+wasmtime --invoke add bin/simple.wasm 1 2
+
+# DOESN'T WORK
+wat2wasm src/test/log.wast -o bin/log.wasm
+

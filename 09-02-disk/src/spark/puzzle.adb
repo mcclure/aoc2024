@@ -13,7 +13,10 @@ is
       I           : Natural;
       Mem_Len_Tmp : Natural;
       Temp_Digit  : Natural;
-      procedure Run(Mem_Len : Natural) is
+      procedure Run(Mem_Len : in Natural)
+      with
+         Pre => Mem_Len > 0
+      is
          Line_Idx  : Natural range 1..20001;
          File_Id   : Natural;
          File_Id_Max : Natural;
