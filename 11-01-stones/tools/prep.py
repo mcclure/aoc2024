@@ -66,7 +66,7 @@ bracketp = re.compile(r'^<(.+)>$')
 quotep = re.compile(r'^"(.+)"$')
 
 # This function is used twice: In assigning values to assignd, and again when reading them back out.
-def parse(s, iskey, keytag):
+def parse(s, keytag, iskey=False, maynull=False):
     # Syntax: | for function (unless ""-wrapped)
     (s, pipe, mods) = s.partition("|") if not quotep.match(s) else (s, None, None)
     if mods:
@@ -94,7 +94,8 @@ def parse(s, iskey, keytag):
         if slower in assignd:
             s = assignd[slower]
         else:
-            print("WARNING: UNKNOWN KEY %s" % key)
+            if not maynull:
+                print("WARNING: UNKNOWN KEY %s" % key)
             return ""
     if verbose:
         print("P4", s,isfile)
@@ -125,7 +126,7 @@ for assign in assigns:
     (key, eq, value) = assign.partition("=")
     if not eq:
         parser.error("Stray string among assignments: " + key)
-    assignd[key.lower()] = parse(value, False, key)
+    assignd[key.lower()] = parse(value, key)
 
 if flag("v"):
     print("Keys:", assignd)
@@ -149,25 +150,29 @@ with utfOpen(inpath) as inf:
             match = commandp.match(line)
             if match:
                 cmd = match.group(1)
-                arg = match.group(2).rstrip()
+                arg = match.group(2)
+                if arg:
+                    arg = arg.rstrip()
+                if verbose:
+                    print("CMD", cmd, arg, eatstack)
                 iselseif = cmd == "elseif"
                 if cmd == "insert":
                     if not eating:
-                        outf.write(parse(arg, True, None))
+                        outf.write(parse(arg, None, True))
                         outf.write("\n")
                 elif cmd == "if" or iselseif:
-                    if ifelseif and not eating:
+                    if iselseif and not eating:
                         eatstack[-1] = "super"
                     elif not (iselseif and eating == "super"): # in not case, leave "super""
                         if iselseif:
                             eatstack.pop()
                         (key, eq, test) = arg.partition("=")
-                        key = parse(key, True, None)
+                        value = parse(key, None, True, not eq)
                         if not key or not eq:
                             cond = value
                         else:
                             cond = value == test
-                        eatstack.push(not cond)
+                        eatstack.append(not cond)
                 elif cmd == "else":
                     if eating is True:
                         eatstack[-1] = False
@@ -175,6 +180,8 @@ with utfOpen(inpath) as inf:
                     eatstack.pop()
                 else:
                     print("WARNING: UNRECOGNIZED COMMAND %s" % cmd)
+                if verbose:
+                    print("\tCMD2", eatstack)
             elif not eating:
                 if delete:
                     line = line.replace(delete, "")
