@@ -5,9 +5,9 @@
 (module
   (data
     (i32.const 000
-    ;;: insert KEY3|len
+    ;;: insert KEY3|i32|len
     )
-    ;;: insert KEY3|bin
+    ;;: insert KEY3|i32|bin
   )
   (func $add (result i32)
     i32.const 000

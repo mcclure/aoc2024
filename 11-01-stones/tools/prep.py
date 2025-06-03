@@ -1,4 +1,4 @@
-# "Textual WASM" preprocessor
+# "Textual WASM" preprocessor (v 0.1)
 #
 # Syntax:
 # ;;: if VAR=VAL
@@ -28,9 +28,10 @@ help += "Accepted arguments:\n"
 help += "-o [path.wast]     # Textual Wasm output\n"
 #help += "--bin [path.wasm]  # Wasm bytecode output\n"
 help += "--delete [path]    # Delete this string (default 000)\n"
+help += "-v                 # Verbose mode (for debugging)\n"
 
 parser = optparse.OptionParser(usage=help)
-for a in ["e"]: # Single letter args, flags
+for a in ["e", "v"]: # Single letter args, flags
     parser.add_option("-"+a, action="store_true")
 for a in ["o", "-bin", "-delete"]: # Long args with arguments
     parser.add_option("-"+a, action="append")
@@ -43,20 +44,21 @@ def flag(a):
     return []
 
 if len(cmds) < 1:
-	parser.error("Input file argument required")
+    parser.error("Input file argument required")
 hads = [bool(flag("o")), bool(flag("bin")), bool(flag("delete"))]
 
 inpath = cmds[0]
 outpath = (flag("o") or ["tmp/a.wast"])[0]
 binpath = (flag("bin") or ["tmp/a.wasm"])[0]
 delete = (flag("delete") or ["000"])[0]
+verbose = bool(flag("v"))
 assigns = cmds[1:]
 assignd = {}
 
 temps = [outpath, binpath, delete]
-for idx, flag in enumerate(["-o", "--bin", "--delete"]):
-	if not hads[idx]:
-		print("\t%s not found, using: %s" % (flag, temps[idx]))
+for idx, flagname in enumerate(["-o", "--bin", "--delete"]):
+    if not hads[idx]:
+        print("\t%s not found, using: %s" % (flagname, temps[idx]))
 temps = None
 
 # Interpret expansion syntax
@@ -65,49 +67,68 @@ quotep = re.compile(r'^"(.+)"$')
 
 # This function is used twice: In assigning values to assignd, and again when reading them back out.
 def parse(s, iskey, keytag):
-	# Syntax: | for function (unless ""-wrapped)
-	(s, pipe, mod) = s.partition("|") if not quotep.match(s) else (s, None, None)
-	# Syntax: <> to read file
-	isfile = False
-	bracket = bracketp.match(s)
-	if bracket:
-		isfile = True
-		s = bracket.group(1)
-	# Syntax: "" to prevent variable expansion
-	quote = quotep.match(s)
-	if quote:
-		iskey = False
-		s = quote.group(1)
-	# Expand variables
-	if iskey:
-		if s in assignd:
-			s = assignd[s].lower()
-		else:
-			print("WARNING: UNKNOWN KEY %s" % key)
-			return ""
-	# Read files
-	if isfile:
-		with open(s, "rb") as innerf: # Notice: Raw bytes, NOT UTF-16
-			s = innerf.read()
-	if pipe: # They gave a | directive
-		if mod == "len":
-			s = len(innerstr)
-		elif mod == "bin": # TODO FORMAT
-			if type(s) == str:
-				s = s.encode()
-			s = '"' + "".join(("\\"+x.hex()) for x in innerstr) + '"'
-		else:
-			print("WARNING: FOR KEY %s UNKNOWN PIPE DIRECTIVE %s" % (keytag or s, mod))
-			return ""
-	if type(s) == bytes:
-		s = s.decode()
-	return s # Convert to string
+    # Syntax: | for function (unless ""-wrapped)
+    (s, pipe, mods) = s.partition("|") if not quotep.match(s) else (s, None, None)
+    if mods:
+        mods = mods.split("|")
+    if verbose:
+        print("P1", s,pipe,mods)
+    # Syntax: <> to read file
+    isfile = False
+    bracket = bracketp.match(s)
+    if bracket:
+        isfile = True
+        s = bracket.group(1)
+    if verbose:
+        print("P2", s,isfile)
+    # Syntax: "" to prevent variable expansion
+    quote = quotep.match(s)
+    if quote:
+        iskey = False
+        s = quote.group(1)
+    if verbose:
+        print("P3", s,iskey)
+    # Expand variables
+    if iskey:
+        slower = s.lower()
+        if slower in assignd:
+            s = assignd[slower]
+        else:
+            print("WARNING: UNKNOWN KEY %s" % key)
+            return ""
+    if verbose:
+        print("P4", s,isfile)
+    # Read files
+    if isfile:
+        with open(s, "rb") as innerf: # Notice: Raw bytes, NOT UTF-16
+            s = innerf.read()
+    if pipe: # They gave a | directive
+        for mod in mods:
+            if mod == "len":
+                s = str(len(s))
+            elif mod == "bin": # TODO FORMAT
+                if type(s) == str:
+                    s = s.encode()
+                s = '"' + "".join(("\\"+bytes([x]).hex()) for x in s) + '"'
+            elif mod == "i32":
+                s = b''.join([int(i).to_bytes(4, byteorder="little") for i in s.split()])
+            else:
+                print("WARNING: FOR KEY %s UNKNOWN PIPE DIRECTIVE %s" % (keytag or s, mod))
+                return ""
+    if type(s) == bytes:
+        s = s.decode()
+    if verbose:
+        print("P5", keytag, s)
+    return s # Convert to string
 
 for assign in assigns:
-	(key, eq, value) = assign.partition("=")
-	if not eq:
-		parser.error("Stray string among assignments: " + key)
-	assignd[key.lower()] = parse(value, False, key)
+    (key, eq, value) = assign.partition("=")
+    if not eq:
+        parser.error("Stray string among assignments: " + key)
+    assignd[key.lower()] = parse(value, False, key)
+
+if flag("v"):
+    print("Keys:", assignd)
 
 # Take a path to a UTF-8 or UTF-16 file. Return an object to be used with utflines()
 def utfOpen(path):
@@ -122,39 +143,39 @@ commandp = re.compile(r'^\s*;;:\s*(\S+)(?:\s+(\S.*))?', re.S) # Capture command 
 eatstack = [] # Each entry can be False (not eating), True (eating) or "super" (eat all clauses)
 
 with utfOpen(inpath) as inf:
-	with open(outpath, "w") as outf:
-	    for line in inf.readlines():
-	    	eating = len(eatstack) > 0 and eatstack[-1]
-	    	match = commandp.match(line)
-	    	if match:
-	    		cmd = match.group(1)
-	    		arg = match.group(2)
-	    		iselseif = cmd == "elseif"
-	    		if cmd == "insert":
-	    			if not eating:
-	    				outf.write(parse(arg, True, None))
-	    				outf.write("\n")
-	    		elif cmd == "if" or iselseif:
-	    			if ifelseif and not eating:
-	    				eatstack[-1] = "super"
-	    			elif not (iselseif and eating == "super"): # in not case, leave "super""
-	    				if iselseif:
-	    					eatstack.pop()
-		    			(key, eq, test) = arg.partition("=")
-		    			key = parse(key, True, None)
-		    			if not key or not eq:
-		    				cond = value
-		    			else:
-		    				cond = value == test
-		    			eatstack.push(not cond)
-	    		elif cmd == "else":
-	    			if eating is True:
-	    				eatstack[-1] = False
-	    		elif cmd == "end":
-	    			eatstack.pop()
-	    		else:
-	    			print("WARNING: UNRECOGNIZED COMMAND %s" % cmd)
-	    	elif not eating:
-	    		if delete:
-	    			line = line.replace(delete, "")
-	    		outf.write(line)
+    with open(outpath, "w") as outf:
+        for line in inf.readlines():
+            eating = len(eatstack) > 0 and eatstack[-1]
+            match = commandp.match(line)
+            if match:
+                cmd = match.group(1)
+                arg = match.group(2).rstrip()
+                iselseif = cmd == "elseif"
+                if cmd == "insert":
+                    if not eating:
+                        outf.write(parse(arg, True, None))
+                        outf.write("\n")
+                elif cmd == "if" or iselseif:
+                    if ifelseif and not eating:
+                        eatstack[-1] = "super"
+                    elif not (iselseif and eating == "super"): # in not case, leave "super""
+                        if iselseif:
+                            eatstack.pop()
+                        (key, eq, test) = arg.partition("=")
+                        key = parse(key, True, None)
+                        if not key or not eq:
+                            cond = value
+                        else:
+                            cond = value == test
+                        eatstack.push(not cond)
+                elif cmd == "else":
+                    if eating is True:
+                        eatstack[-1] = False
+                elif cmd == "end":
+                    eatstack.pop()
+                else:
+                    print("WARNING: UNRECOGNIZED COMMAND %s" % cmd)
+            elif not eating:
+                if delete:
+                    line = line.replace(delete, "")
+                outf.write(line)
