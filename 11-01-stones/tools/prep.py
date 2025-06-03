@@ -8,8 +8,8 @@
 # ;;: insert VAR
 # Additionally all instances of the string 000 (or string specified as --delete) will be deleted
 # Additionally VAR may be <VAR> to load var as filename
-# Additionally VAR may be <VAR|len> for len of var file
-# Addiitonally VAR may be <VAR|bin> for escaped binary string of var file
+# Additionally VAR may be <VAR>|len for len of var file
+# Addiitonally VAR may be <VAR>|bin for escaped binary string of var file
 #
 # Command line syntax:
 # python3 prep.py FILEIN -o FILEOUT [ASSIGNS..]
@@ -59,12 +59,55 @@ for idx, flag in enumerate(["-o", "--bin", "--delete"]):
 		print("\t%s not found, using: %s" % (flag, temps[idx]))
 temps = None
 
+# Interpret expansion syntax
+bracketp = re.compile(r'^<(.+)>$')
+quotep = re.compile(r'^"(.+)"$')
+
+# This function is used twice: In assigning values to assignd, and again when reading them back out.
+def parse(s, iskey, keytag):
+	# Syntax: | for function (unless ""-wrapped)
+	(s, pipe, mod) = s.partition("|") if not quotep.match(s) else (s, None, None)
+	# Syntax: <> to read file
+	isfile = False
+	bracket = bracketp.match(s)
+	if bracket:
+		isfile = True
+		s = bracket.group(1)
+	# Syntax: "" to prevent variable expansion
+	quote = quotep.match(s)
+	if quote:
+		iskey = False
+		s = quote.group(1)
+	# Expand variables
+	if iskey:
+		if s in assignd:
+			s = assignd[s].lower()
+		else:
+			print("WARNING: UNKNOWN KEY %s" % key)
+			return ""
+	# Read files
+	if isfile:
+		with open(s, "rb") as innerf: # Notice: Raw bytes, NOT UTF-16
+			s = innerf.read()
+	if pipe: # They gave a | directive
+		if mod == "len":
+			s = len(innerstr)
+		elif mod == "bin": # TODO FORMAT
+			if type(s) == str:
+				s = s.encode()
+			s = '"' + "".join(("\\"+x.hex()) for x in innerstr) + '"'
+		else:
+			print("WARNING: FOR KEY %s UNKNOWN PIPE DIRECTIVE %s" % (keytag or s, mod))
+			return ""
+	if type(s) == bytes:
+		s = s.decode()
+	return s # Convert to string
+
 for assign in assigns:
 	(key, eq, value) = assign.partition("=")
 	if not eq:
 		parser.error("Stray string among assignments: " + key)
-	if value:
-		assignd[key.lower()] = value
+	assignd[key.lower()] = parse(value, False, key)
 
 # Take a path to a UTF-8 or UTF-16 file. Return an object to be used with utflines()
 def utfOpen(path):
@@ -75,40 +118,8 @@ def utfOpen(path):
 
 # Interpret a ;;: line
 commandp = re.compile(r'^\s*;;:\s*(\S+)(?:\s+(\S.*))?', re.S) # Capture command + rest-as-arg
-bracketp = re.compile(r'^<(.+)>$')
 
 eatstack = [] # Each entry can be False (not eating), True (eating) or "super" (eat all clauses)
-
-def avimpl(key, value):
-	match = bracketp.match(value)
-	if match: # File load
-		inner = match.group(1)
-		if inner:
-			if bracketp.match(inner):
-				return inner # Undocumented features: <<>> is <>
-			(inner, pipe, mod) = inner.partition("|")
-			with open(inner, "rb") as innerf:
-				innerstr = innerf.read()
-			if pipe: # They gave a | directive
-				if mod == "len":
-					return len(innerstr)
-				if mod == "bin": # TODO FORMAT
-					return "".join(("\\"+x.hex()) for x in innerstr)
-				print("WARNING: FOR KEY %s UNKNOWN PIPE DIRECTIVE %s" % (key, mod))
-				return "" # Yeah just return it
-			return innerstr.decode() # Convert to string
-		else:
-			print("WARNING: FOR KEY %s EMPTY FILENAME %s" % (key, inner))
-			return ""
-	else: # Raw string
-		return s
-
-def avalue(key):
-	if bracketp.match(key):
-		return avimpl("[anonymous]", key) # Undocumented features: key can be a <file>
-	if key in assignd:
-		return avimpl(key, assignd[key])
-	print("WARNING: UNKNOWN KEY %s" % key)
 
 with utfOpen(inpath) as inf:
 	with open(outpath, "w") as outf:
@@ -121,7 +132,7 @@ with utfOpen(inpath) as inf:
 	    		iselseif = cmd == "elseif"
 	    		if cmd == "insert":
 	    			if not eating:
-	    				outf.write(avalue(arg))
+	    				outf.write(parse(arg, True, None))
 	    				outf.write("\n")
 	    		elif cmd == "if" or iselseif:
 	    			if ifelseif and not eating:
@@ -130,7 +141,7 @@ with utfOpen(inpath) as inf:
 	    				if iselseif:
 	    					eatstack.pop()
 		    			(key, eq, test) = arg.partition("=")
-		    			value = avalue(key)
+		    			key = parse(key, True, None)
 		    			if not key or not eq:
 		    				cond = value
 		    			else:
