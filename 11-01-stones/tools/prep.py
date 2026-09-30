@@ -6,6 +6,8 @@
 # ;;: elseif VAR=VAL
 # ;;: end
 # ;;: insert VAR
+# ;;: set VAR=VAL
+# ;;: setv VAR=VAR
 # Additionally all instances of the string 000 (or string specified as --delete) will be deleted
 # Additionally VAR may be <VAR> to load var as filename
 # Additionally VAR may be <VAR>|len for len of var file
@@ -18,15 +20,19 @@
 # A=<B> -- set var A to contents of file B
 
 import codecs
+import copy
 import optparse
 import re
+import os
+import subprocess
+import sys
 
 help  = "%prog [FILEPATH] [ASSIGNS..]\n"
 help += "\n"
 help += "Accepted arguments:\n"
-#help += "-e                 # Attempt to run\n"
+help += "-e                 # Attempt to run\n"
 help += "-o [path.wast]     # Textual Wasm output\n"
-#help += "--bin [path.wasm]  # Wasm bytecode output\n"
+help += "--bin [path.wasm]  # Wasm bytecode output\n"
 help += "--delete [path]    # Delete this string (default 000)\n"
 help += "-v                 # Verbose mode (for debugging)\n"
 
@@ -156,6 +162,7 @@ with utfOpen(inpath) as inf:
                 if verbose:
                     print("CMD", cmd, arg, eatstack)
                 iselseif = cmd == "elseif"
+                issetv = cmd == "setv"
                 if cmd == "insert":
                     if not eating:
                         outf.write(parse(arg, None, True))
@@ -178,6 +185,20 @@ with utfOpen(inpath) as inf:
                         eatstack[-1] = False
                 elif cmd == "end":
                     eatstack.pop()
+                elif cmd == "set" or issetv:
+                    (key, eq, value) = arg.partition("=")
+                    if eq:
+                        if issetv:
+                            value = parse(value, key, True)
+                        assign[key.lower()] = value
+                    else:
+                        if issetv:
+                            print("WARNING: BLANK SETV FOR KEY %s", key)
+                        else:
+                            del assignd[key.lower()]
+
+                    if verbose:
+                        print("\tCMD-SET", assignd)
                 else:
                     print("WARNING: UNRECOGNIZED COMMAND %s" % cmd)
                 if verbose:
@@ -186,3 +207,38 @@ with utfOpen(inpath) as inf:
                 if delete:
                     line = line.replace(delete, "")
                 outf.write(line)
+
+if flag("o") or flag("e"):
+    # Prevent modification of process environment by Popen
+    globalEnv = copy.deepcopy( os.environ )
+    startp = re.compile(r'^', re.MULTILINE)
+    def pretag(tag, str):
+        tag = u"\t%s: " % (tag)
+        return startp.sub(tag, str)
+
+    def subrun(invoke):
+        if verbose:
+            print("Exec", invoke)
+        try:
+            proc = subprocess.Popen(invoke, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=globalEnv)
+        except OSError as e:
+            print("\nCATASTROPHIC FAILURE: Couldn't find command line tool?:")
+            print(e)
+            sys.exit(1)
+
+        result = proc.wait()
+        outstr, errstr = proc.communicate()
+
+        outstr = codecs.decode( outstr.rstrip(), 'utf-8' )
+        errstr = codecs.decode( errstr.rstrip(), 'utf-8' )
+
+        if result: # UNIX code
+            print("Run", invoke[0], "failure", result) # TODO: print to stderr somehow
+            print(pretag("STDERR:", errstr))
+            sys.exit(1)
+
+    subrun(["wat2wasm", outpath, "-o", binpath])
+
+    if flag("e"):
+        print("Success\n")
+        print("wasmtime", binpath) # TODO: Note doesn't actually run, just print run instructins
