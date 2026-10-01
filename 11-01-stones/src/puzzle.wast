@@ -29,22 +29,26 @@
   ;;   (local.get $digits)
   ;; )
   (func $run (result i32) (local $pass i32)
-    (block $loop
-      ;; First, check if finished
-      (i32.load (i32.const 000
-        ;;: insert PASSP
-      ))
-      (local.tee $pass)
-      (i32.const 0)
-      (i32.eq)
-      br_if $loop
-      ;; Survived; subtract one pass and write back
-      (local.get $pass)
-      (i32.const 1)
-      (i32.sub)
-      (i32.store (i32.const 000
-        ;;: insert PASSP
-      ))
+    (local.set $pass (i32.const 000
+        ;;: insert ROUNDS
+    ))
+    (block $countdown_done
+      (loop $countdown
+        ;; Loop always starts with $pass atop stack
+        (local.get $pass)
+        (i32.const 0)
+        (i32.eq)
+        (br_if $countdown_done)
+
+        
+
+        ;; Done; subtract one pass and leave on stack
+        (local.get $pass)
+        (i32.const 1)
+        (i32.sub)
+        (local.set $pass)
+        (br $countdown)
+      )
     )
 
     ;; Return result
