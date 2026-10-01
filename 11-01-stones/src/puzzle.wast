@@ -1,5 +1,8 @@
 ;; AOC day 11 part 1
-;; python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.unknown.txt>" MEMORY=1 ROUNDS=25
+;; python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.unknown.txt>" MEMORY=1 ROUNDS=25 RESULT=0
+
+;;  MAX_UINT/2024
+;;: set WILL_OVERFLOW=2122019
 
 (module
   ;; Note to third parties. ;; followed by : invokes my preprocessor;
@@ -25,14 +28,36 @@
   ;;   (local.set $digits (i32.load (i32.const 0)))
   ;;   (local.get $digits)
   ;; )
-  (func $run (result i32) (local $digits i32)
-    (local.set $digits (i32.load (i32.const 0)))
-    (local.get $digits)
+  (func $run (result i32) (local $pass i32)
+    (block $loop
+      ;; First, check if finished
+      (i32.load (i32.const 000
+        ;;: insert PASSP
+      ))
+      (local.tee $pass)
+      (i32.const 0)
+      (i32.eq)
+      br_if $loop
+      ;; Survived; subtract one pass and write back
+      (local.get $pass)
+      (i32.const 1)
+      (i32.sub)
+      (i32.store (i32.const 000
+        ;;: insert PASSP
+      ))
+    )
 
-    ;; Convert offset to count
+    ;; Return result
+    (i32.load (i32.const 000
+        ;; RESULT should usually be zero, but by making it tunable I can debug stuff
+        ;;: insert RESULT
+      ))
+    ;;: if RESULT=0
+    ;; If we're returning LEN, convert it to an array size.
     (i32.const 4)
     (i32.div_u)
     (i32.sub (i32.const 2))
+    ;;: end
   )
   (export "run" (func $run))
 )
