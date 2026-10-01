@@ -1,73 +1,38 @@
 ;; AOC day 11 part 1
-;; Note: First 24 bytes of memory reserved for nonsense reasons
-
-;; python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.unknown.txt>"
+;; python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.unknown.txt>" MEMORY=1 ROUNDS=25
 
 (module
-
-;; None of this used and I'm not even sure if it works
-;;: if DEBUG
-  (import "wasi_snapshot_preview1" "fd_write" (func $fd_write (param i32 i32 i32 i32) (result i32)))
-  (func $putc (param $in i32)
-      ;; Creating a new io vector within linear memory
-      (i32.store (i32.const 0) (i32.const 8))  ;; iov.iov_base - This is a pointer to the start of the 'hello world\n' string
-      (i32.store (i32.const 4) (i32.const 1))  ;; iov.iov_len - The length of the 'hello world\n' string
-      (i32.store8 (i32.const 20) (local.get $in))
-
-      (call $fd_write
-          (i32.const 1) ;; file_descriptor - 1 for stdout
-          (i32.const 0) ;; *iovs - The pointer to the iov array, which is stored at memory location 0
-          (i32.const 1) ;; iovs_len - We're printing 1 string stored in an iov - so one.
-          (i32.const 12) ;; nwritten - A place in memory to store the number of bytes written
-      )
-      drop ;; Discard the number of bytes written from the top of the stack
-  )
-  (func $putsp
-    (i32.const 20)
-    call $putc
-  )
-  (func $putlf
-    (i32.const 10)
-    call $putc
-  )
-  (func $puti (param $in i32) (local $digits i32) (local $chp i32)
-    (local.set $digits (i32.const 0))
-    (local.set $chp (i32.const 20))
-    (block $atoi
-      ;;local.get $digits  i32.const 1  i32.add  local.get $chp  memory.store32
-      ;;local.get $in  i32.const 10  i32.idiv_u  memory.store8 $chp
-;;      (memory.store8 $chp (i32.irem_u  ))
-;;      (memory.store32 $digits (i32.add $digits i32.const 1))
- ;;     (memory.store32 $in (i32.idiv_u $in 10))
-      ;;(if (i32.ieq(digits i32.const 0)))
-      )
-    (i32.store (i32.const 0) ($len))  ;; iov.iov_base - This is a pointer to the start of the 'hello world\n' string
-      (i32.store (i32.const 4) ($digits))  ;; iov.iov_len - The length of the 'hello world\n' string
-      (i32.store8 (i32.const 20) (local.get $in))
-
-      (call $fd_write
-          (i32.const 1) ;; file_descriptor - 1 for stdout
-          (i32.const 0) ;; *iovs - The pointer to the iov array, which is stored at memory location 0
-          (i32.const 1) ;; iovs_len - We're printing 1 string stored in an iov - so one.
-          (i32.const 12) ;; nwritten - A place in memory to store the number of bytes written
-      )
-      drop ;; Discard the number of bytes written from the top of the stack
-
-;;    (local.get $in)
-
-  )
-;;: end
-
-  ;; Actual program starts here
+  ;; Note to third parties. ;; followed by : invokes my preprocessor;
+  ;; Instances of "000" get deleted, and are only present to make my syntax highlighter happy
   (memory 000
-    ;;: insert INPUT|i32|len
+    ;;: insert MEMORY
   )
   (data
     (i32.const 0)
+    ;; Global LEN: Array length + 2 (eg length of full memory)
+    ;;: set LENP=0
+    ;;: insert INPUT|i32|len|+:8|i32|bin
+
+    ;; Global PASS: Passes complete
+    ;;: set PASSP=4
+    "\00\00\00\00"
+
+    ;; Global ARRAY: Start of data array
+    ;;: set ARRAY=8
     ;;: insert INPUT|i32|bin
   )
-  (func $run (result i32)
-    (i32.const 3)
+  ;; (func $push (param $start i32) (local $digits i32)
+  ;;   (local.set $digits (i32.load (i32.const 0)))
+  ;;   (local.get $digits)
+  ;; )
+  (func $run (result i32) (local $digits i32)
+    (local.set $digits (i32.load (i32.const 0)))
+    (local.get $digits)
+
+    ;; Convert offset to count
+    (i32.const 4)
+    (i32.div_u)
+    (i32.sub (i32.const 2))
   )
   (export "run" (func $run))
 )

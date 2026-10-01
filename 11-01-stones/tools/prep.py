@@ -15,6 +15,7 @@
 # Additionally VAR may be <VAR> to load var as filename
 # Additionally VAR may be <VAR>|len for len of var file
 # Addiitonally VAR may be <VAR>|bin for escaped binary string of var file
+# Addiitonally VAR may be VAR|+:N for some integer N to add N to VAR (assuming var represents an int)
 #
 # Command line syntax:
 # python3 prep.py FILEIN -o FILEOUT [ASSIGNS..]
@@ -122,9 +123,22 @@ def parse(s, keytag, iskey=False, maynull=False):
                 s = '"' + "".join(("\\"+bytes([x]).hex()) for x in s) + '"'
             elif mod == "i32":
                 s = b''.join([int(i).to_bytes(4, byteorder="little") for i in s.split()])
+            elif mod == "i64":
+                s = b''.join([int(i).to_bytes(8, byteorder="little") for i in s.split()])
             else:
-                print("WARNING: FOR KEY %s UNKNOWN PIPE DIRECTIVE %s" % (keytag or s, mod))
-                return ""
+                fn = mod.split(":")
+                if len(fn) > 1:
+                    if len(fn) == 2 and fn[0] == "+":
+                        try:
+                            s = str(int(s) + int(fn[1]))
+                        except ValueError:
+                            print("WARNING: FOR KEY %s PIPE DIRECTIVE %s+%s, COULD NOT CONVERT TO INT" % (keytag or s, s, fn[1]))
+                            return ""
+                    else:
+                        print("WARNING: FOR KEY %s, FUNCTION-STYLE PIPE DIRECTIVE %s WITH %d ARGS WAS NOT UNDERSTOOD" % (keytag or s, fn[0], len(fn)-1))
+                else:
+                    print("WARNING: FOR KEY %s UNKNOWN PIPE DIRECTIVE %s" % (keytag or s, mod))
+                    return ""
     if type(s) == bytes:
         s = s.decode()
     if verbose:
@@ -193,7 +207,7 @@ with utfOpen(inpath) as inf:
                     if eq:
                         if issetv:
                             value = parse(value, key, True)
-                        assign[key.lower()] = value
+                        assignd[key.lower()] = value
                     else:
                         if issetv:
                             print("WARNING: BLANK SETV FOR KEY %s", key)
