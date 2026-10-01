@@ -1,5 +1,8 @@
 # "Textual WASM" preprocessor (v 0.1)
 #
+# If this syntax seems weird, it is based entirely around preventing the
+# Sublime Text wast syntax highlighter from freaking out on me.
+#
 # Syntax:
 # ;;: if VAR=VAL
 # ;;: else
