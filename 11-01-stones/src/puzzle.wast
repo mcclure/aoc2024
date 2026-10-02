@@ -38,23 +38,22 @@
 
     (loop $copy
       (local.get $idx) ;; a
-      (local.get $new) ;; b
-      (local.get $idx) ;; c
-      (local.get $idx) ;; d
+      (i32.const 4)    ;; 1
+      (i32.add)        ;; b = a + 1
+      (local.tee $idx) ;; $idx = clone(b) [ $idx = $idx + 1 ]
+      (local.get $new) ;; c = $new
+      (local.get $idx) ;; d = $idx
       (i32.load)       ;; e = *d
-      (local.set $new) ;; $new = e        [ $new = *idx ]
-      (i32.const 1)    ;; 1
-      (i32.add)        ;; f = c + 1
-      (local.set $idx) ;; $idx = clone(f) [ $idx = idx + 1 ]
-      (i32.store)      ;; g = *f          [ *old($idx) = old($new) ]
+      (local.set $new) ;; $new = e        [ $new = *$idx ]
+      (i32.store)      ;; *b = old(c)     [ *$idx = old($new )]
       (local.get $max)
       (local.get $idx)
-      (i32.le_u)
+      (i32.gt_u)
       (br_if $copy)
     )
   )
   (func $run (result i32) (local $pass i32) (local $idx i32)
-      (local $current i32) (local $tcurrent i32) (local $lcurrent i32) (local $rcurrent i32) (local $ldigit i32) (local $rdigit i32)
+      (local $current i32) (local $tcurrent i32) (local $tdivider i32)
       ;;(local $debug i32)
     (local.set $pass (i32.const 000
         ;;: insert ROUNDS
@@ -80,20 +79,9 @@
           (local.tee $current)
           (if
             (then ;; Number was nonzero
-              (local.set $lcurrent (i32.const 0))
-              (local.set $rcurrent (i32.const 0))
+              (local.set $tdivider (i32.const 1))
               (local.set $tcurrent (local.get $current))
               (loop $modulo
-                (local.get $tcurrent)
-                (i32.const 10)
-                (i32.rem_u)
-                (local.tee $ldigit) ;; Digit remains on stack
-                (local.get $lcurrent)
-                (i32.const 10)
-                (i32.mul)
-                (i32.add)
-                (local.set $lcurrent)
-
                 (local.get $tcurrent)
                 (i32.const 10)
                 (i32.div_u)
@@ -101,15 +89,10 @@
 
                 (if
                   (then ;; at least one more digit
-                    (local.get $tcurrent)
-                    (i32.const 10)
-                    (i32.rem_u)
-                    (local.tee $rdigit) ;; Digit remains on stack
-                    (local.get $rcurrent)
+                    (local.get $tdivider)
                     (i32.const 10)
                     (i32.mul)
-                    (i32.add)
-                    (local.set $rcurrent)
+                    (local.set $tdivider)
 
                     (local.get $tcurrent)
                     (i32.const 10)
@@ -122,9 +105,15 @@
                       )
                       (else ;; Even digits!!!
                         (local.get $idx)
-                        (local.get $lcurrent)
+                        (local.get $current)
+                        (local.get $tdivider)
+                        (i32.div_u)
                         (i32.store)
-                        (call $unshift (local.get $idx) (local.get $rcurrent))
+                        (local.get $idx)
+                        (local.get $current)
+                        (local.get $tdivider)
+                        (i32.rem_u)
+                        (call $unshift)
                       )
                     )
                   )
