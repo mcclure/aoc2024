@@ -16,6 +16,8 @@
 # Additionally VAR may be <VAR>|len for len of var file
 # Addiitonally VAR may be <VAR>|bin for escaped binary string of var file
 # Addiitonally VAR may be VAR|+:N for some integer N to add N to VAR (assuming var represents an int)
+# Addiitonally VAR may be VAR|*:N for some integer N to mul N by VAR (assuming var represents an int)
+
 #
 # Command line syntax:
 # python3 prep.py FILEIN -o FILEOUT [ASSIGNS..]
@@ -128,11 +130,15 @@ def parse(s, keytag, iskey=False, maynull=False):
             else:
                 fn = mod.split(":")
                 if len(fn) > 1:
-                    if len(fn) == 2 and fn[0] == "+":
+                    (plus, mul) = (fn[0] == "+", fn[0] == "*")
+                    if len(fn) == 2 and (plus or mul):
                         try:
-                            s = str(int(s) + int(fn[1]))
+                            if plus:
+                                s = str(int(s) + int(fn[1]))
+                            if mul:
+                                s = str(int(s) * int(fn[1]))
                         except ValueError:
-                            print("WARNING: FOR KEY %s PIPE DIRECTIVE %s+%s, COULD NOT CONVERT TO INT" % (keytag or s, s, fn[1]))
+                            print("WARNING: FOR KEY %s PIPE DIRECTIVE %s%s%s, COULD NOT CONVERT TO INT" % (keytag or s, s, fn[0], fn[1]))
                             return ""
                     else:
                         print("WARNING: FOR KEY %s, FUNCTION-STYLE PIPE DIRECTIVE %s WITH %d ARGS WAS NOT UNDERSTOOD" % (keytag or s, fn[0], len(fn)-1))
@@ -164,6 +170,7 @@ def utfOpen(path):
 # Interpret a ;;: line
 commandp = re.compile(r'^\s*;;:\s*(\S+)(?:\s+(\S.*))?', re.S) # Capture command + rest-as-arg
 
+# Stack for nested if sequences
 eatstack = [] # Each entry can be False (not eating), True (eating) or "super" (eat all clauses)
 
 with utfOpen(inpath) as inf:
@@ -198,8 +205,8 @@ with utfOpen(inpath) as inf:
                             cond = value == test
                         eatstack.append(not cond)
                 elif cmd == "else":
-                    if eating is True:
-                        eatstack[-1] = False
+                    if eating is True or eating is False:
+                        eatstack[-1] = not eating
                 elif cmd == "end":
                     eatstack.pop()
                 elif cmd == "set" or issetv:

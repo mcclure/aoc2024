@@ -1,10 +1,16 @@
 ;; AOC day 11 part 1
 ;; python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=1 ROUNDS=25 RESULT=0
+;; RESULT can be either a number or LEN
 
-;;  MAX_UINT/2024
+;;  MAX_UINT64/2024
+;; TODO ;;: set WILL_OVERFLOW_OVER=9114003988986932
 ;;: set WILL_OVERFLOW_OVER=2122019
 
 (module
+  (global $len (mut i32) (i32.const 000
+    ;;: insert INPUT|i64|len
+  ))
+
   ;; Note to third parties. ;; followed by : invokes my preprocessor;
   ;; Instances of "000" get deleted, and are only present to make my syntax highlighter happy
   (memory 000
@@ -12,33 +18,20 @@
   )
   (data
     (i32.const 0)
-    ;; Global LEN: Array length + 2 (eg length of full memory)
-    ;;: set LENP=0
-    ;;: insert INPUT|i32|len|+:4|i32|bin
-
     ;; Global ARRAY: Start of data array
-    ;;: set ARRAYP=4
-    ;;: insert INPUT|i32|bin
+    ;;: set ARRAYP=0
+    ;;: insert INPUT|i64|bin
   )
-  ;; (func $push (param $start i32) (local $digits i32)
-  ;;   (local.set $digits (i32.load (i32.const 0)))
-  ;;   (local.get $digits)
-  ;; )
+
   (func $unshift (param $idx i32) (param $new i32) (local $max i32)
-    (i32.const 000
-        ;;: insert LENP
-    )
-    (i32.const 000
-        ;;: insert LENP
-    )
-    (i32.load)
+    (global.get $len)
     (local.tee $max) ;; old len is new final index
-    (i32.add (i32.const 4))
-    (i32.store)
+    (i32.add (i32.const 8))
+    (global.set $len)
 
     (loop $copy
       (local.get $idx) ;; a
-      (i32.const 4)    ;; 1
+      (i32.const 8)    ;; 1
       (i32.add)        ;; b = a + 1
       (local.tee $idx) ;; $idx = clone(b) [ $idx = $idx + 1 ]
       (local.get $new) ;; c = $new
@@ -66,12 +59,10 @@
         (i32.eq)
         (br_if $countdown_done)
 
-        (local.set $idx (i32.load (i32.const 000
-            ;;: insert LENP
-          )))
+        (local.set $idx (global.get $len))
         (loop $sweep
           (local.get $idx)
-          (i32.const 4)
+          (i32.const 8)
           (i32.sub)
           (local.tee $idx)
 
@@ -162,18 +153,18 @@
       )
     )
 
-    ;; Return result
-    (i32.load (i32.const 000
-        ;; RESULT should usually be zero, but by making it tunable I can debug stuff
-        ;;: insert RESULT
-      ))
-    ;;: if RESULT=0
-    ;; If we're returning LEN, convert it to an array size.
-    (i32.sub (i32.const 000
-        ;;: insert ARRAYP
-      ))
-    (i32.const 4)
+    ;; Return requested result
+
+    ;;: if RESULT=LEN
+    ;; Access global and convert to array size
+    (global.get $len)
+    (i32.const 8)
     (i32.div_u)
+    ;;: else
+    (i32.load (i32.const 000
+        ;; Access requested item in array
+        ;;: insert RESULT|*:8
+      ))
     ;;: end
 
     ;; drop (local.get $debug) ;; uncomment to debug
