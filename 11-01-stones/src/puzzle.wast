@@ -3,8 +3,7 @@
 ;; RESULT can be either a number or LEN
 
 ;;  MAX_UINT64/2024
-;; TODO ;;: set WILL_OVERFLOW_OVER=9114003988986932
-;;: set WILL_OVERFLOW_OVER=2122019
+;;: set WILL_OVERFLOW_OVER=9114003988986932
 
 (module
   (global $len (mut i32) (i32.const 000
@@ -23,7 +22,7 @@
     ;;: insert INPUT|i64|bin
   )
 
-  (func $unshift (param $idx i32) (param $new i32) (local $max i32)
+  (func $unshift (param $idx i32) (param $new i64) (local $max i32)
     (global.get $len)
     (local.tee $max) ;; old len is new final index
     (i32.add (i32.const 8))
@@ -36,18 +35,18 @@
       (local.tee $idx) ;; $idx = clone(b) [ $idx = $idx + 1 ]
       (local.get $new) ;; c = $new
       (local.get $idx) ;; d = $idx
-      (i32.load)       ;; e = *d
+      (i64.load)       ;; e = *d
       (local.set $new) ;; $new = e        [ $new = *$idx ]
-      (i32.store)      ;; *b = old(c)     [ *$idx = old($new )]
+      (i64.store)      ;; *b = old(c)     [ *$idx = old($new )]
       (local.get $max)
       (local.get $idx)
       (i32.gt_u)
       (br_if $copy)
     )
   )
-  (func $run (result i32) (local $pass i32) (local $idx i32)
-      (local $current i32) (local $tcurrent i32) (local $tdivider i32)
-      ;;(local $debug i32)
+  (func $run (result i64) (local $pass i32) (local $idx i32)
+      (local $current i64) (local $tcurrent i64) (local $tdivider i64)
+      ;;(local $debug i64)
     (local.set $pass (i32.const 000
         ;;: insert ROUNDS
     ))
@@ -66,30 +65,37 @@
           (i32.sub)
           (local.tee $idx)
 
-          (i32.load) ;; This Is The Number
+          (i64.load) ;; This Is The Number
           (local.tee $current)
+
+          (i64.const 0)
+          (i64.ne)
           (if
             (then ;; Number was nonzero
-              (local.set $tdivider (i32.const 1))
+              (local.set $tdivider (i64.const 1))
               (local.set $tcurrent (local.get $current))
               (loop $modulo
                 (local.get $tcurrent)
-                (i32.const 10)
-                (i32.div_u)
+                (i64.const 10)
+                (i64.div_u)
                 (local.tee $tcurrent)
 
+                (i64.const 0)
+                (i64.ne)
                 (if
                   (then ;; at least one more digit
                     (local.get $tdivider)
-                    (i32.const 10)
-                    (i32.mul)
+                    (i64.const 10)
+                    (i64.mul)
                     (local.set $tdivider)
 
                     (local.get $tcurrent)
-                    (i32.const 10)
-                    (i32.div_u)
+                    (i64.const 10)
+                    (i64.div_u)
                     (local.tee $tcurrent)
 
+                    (i64.const 0)
+                    (i64.ne)
                     (if
                       (then ;; at least one more digit...
                         (br $modulo)
@@ -98,30 +104,30 @@
                         (local.get $idx)
                         (local.get $current)
                         (local.get $tdivider)
-                        (i32.div_u)
-                        (i32.store)
+                        (i64.div_u)
+                        (i64.store)
                         (local.get $idx)
                         (local.get $current)
                         (local.get $tdivider)
-                        (i32.rem_u)
+                        (i64.rem_u)
                         (call $unshift)
                       )
                     )
                   )
                   (else ;; oops, we just proved odd digits
                     (local.get $current)
-                    (i32.const 000 ;; real quick, test safety
+                    (i64.const 000 ;; real quick, test safety
                       ;;: insert WILL_OVERFLOW_OVER
                     )
-                    (i32.gt_u) ;; I hate the ordering here
+                    (i64.gt_u) ;; I hate the ordering here
                     (if
                       (then unreachable)
                       (else ;; Safe to multiply
                         (local.get $idx)
                         (local.get $current)
-                        (i32.const 2024)
-                        (i32.mul)
-                        (i32.store)
+                        (i64.const 2024)
+                        (i64.mul)
+                        (i64.store)
                       )
                     )
                   )
@@ -130,8 +136,8 @@
             )
             (else ;; Number was 0
               (local.get $idx)
-              (i32.const 1)
-              i32.store
+              (i64.const 1)
+              i64.store
             )
           )
 
@@ -160,8 +166,9 @@
     (global.get $len)
     (i32.const 8)
     (i32.div_u)
+    (i64.extend_i32_u)
     ;;: else
-    (i32.load (i32.const 000
+    (i64.load (i32.const 000
         ;; Access requested item in array
         ;;: insert RESULT|*:8
       ))
