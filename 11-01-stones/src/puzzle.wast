@@ -1,8 +1,8 @@
 ;; AOC day 11 part 1
-;; python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.unknown.txt>" MEMORY=1 ROUNDS=25 RESULT=0
+;; python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=1 ROUNDS=25 RESULT=0
 
 ;;  MAX_UINT/2024
-;;: set WILL_OVERFLOW=2122019
+;;: set WILL_OVERFLOW_OVER=2122019
 
 (module
   ;; Note to third parties. ;; followed by : invokes my preprocessor;
@@ -24,7 +24,38 @@
   ;;   (local.set $digits (i32.load (i32.const 0)))
   ;;   (local.get $digits)
   ;; )
+  (func $unshift (param $idx i32) (param $new i32) (local $max i32)
+    (i32.const 000
+        ;;: insert LENP
+    )
+    (i32.const 000
+        ;;: insert LENP
+    )
+    (i32.load)
+    (local.tee $max) ;; old len is new final index
+    (i32.add (i32.const 4))
+    (i32.store)
+
+    (loop $copy
+      (local.get $idx) ;; a
+      (local.get $new) ;; b
+      (local.get $idx) ;; c
+      (local.get $idx) ;; d
+      (i32.load)       ;; e = *d
+      (local.set $new) ;; $new = e        [ $new = *idx ]
+      (i32.const 1)    ;; 1
+      (i32.add)        ;; f = c + 1
+      (local.set $idx) ;; $idx = clone(f) [ $idx = idx + 1 ]
+      (i32.store)      ;; g = *f          [ *old($idx) = old($new) ]
+      (local.get $max)
+      (local.get $idx)
+      (i32.le_u)
+      (br_if $copy)
+    )
+  )
   (func $run (result i32) (local $pass i32) (local $idx i32)
+      (local $current i32) (local $tcurrent i32) (local $lcurrent i32) (local $rcurrent i32) (local $ldigit i32) (local $rdigit i32)
+      ;;(local $debug i32)
     (local.set $pass (i32.const 000
         ;;: insert ROUNDS
     ))
@@ -46,7 +77,83 @@
           (local.tee $idx)
 
           (i32.load) ;; This Is The Number
-          drop
+          (local.tee $current)
+          (if
+            (then ;; Number was nonzero
+              (local.set $lcurrent (i32.const 0))
+              (local.set $rcurrent (i32.const 0))
+              (local.set $tcurrent (local.get $current))
+              (loop $modulo
+                (local.get $tcurrent)
+                (i32.const 10)
+                (i32.rem_u)
+                (local.tee $ldigit) ;; Digit remains on stack
+                (local.get $lcurrent)
+                (i32.const 10)
+                (i32.mul)
+                (i32.add)
+                (local.set $lcurrent)
+
+                (local.get $tcurrent)
+                (i32.const 10)
+                (i32.div_u)
+                (local.tee $tcurrent)
+
+                (if
+                  (then ;; at least one more digit
+                    (local.get $tcurrent)
+                    (i32.const 10)
+                    (i32.rem_u)
+                    (local.tee $rdigit) ;; Digit remains on stack
+                    (local.get $rcurrent)
+                    (i32.const 10)
+                    (i32.mul)
+                    (i32.add)
+                    (local.set $rcurrent)
+
+                    (local.get $tcurrent)
+                    (i32.const 10)
+                    (i32.div_u)
+                    (local.tee $tcurrent)
+
+                    (if
+                      (then ;; at least one more digit...
+                        (br $modulo)
+                      )
+                      (else ;; Even digits!!!
+                        (local.get $idx)
+                        (local.get $lcurrent)
+                        (i32.store)
+                        (call $unshift (local.get $idx) (local.get $rcurrent))
+                      )
+                    )
+                  )
+                  (else ;; oops, we just proved odd digits
+                    (local.get $current)
+                    (i32.const 000 ;; real quick, test safety
+                      ;;: insert WILL_OVERFLOW_OVER
+                    )
+                    (i32.gt_u) ;; I hate the ordering here
+                    (if
+                      (then unreachable)
+                      (else ;; Safe to multiply
+                        (local.get $idx)
+                        (local.get $current)
+                        (i32.const 2024)
+                        (i32.mul)
+                        (i32.store)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+            (else ;; Number was 0
+              (local.get $idx)
+              (i32.const 1)
+              i32.store
+            )
+          )
 
           ;; Continue if that wasn't the lowest cell
           (local.get $idx)
@@ -79,6 +186,8 @@
     (i32.const 4)
     (i32.div_u)
     ;;: end
+
+    ;; drop (local.get $debug) ;; uncomment to debug
   )
   (export "run" (func $run))
 )
