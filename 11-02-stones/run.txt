@@ -12,8 +12,10 @@ wasmtime --invoke add bin/simple.wasm 1 2
 wat2wasm src/test/log.wast -o bin/log.wasm
 
 
-python3 tools/prep.py src/puzzle.wast INPUT="<data/test/zero.unknown.txt>" MEMORY=1 ROUNDS=1 RESULT=0 && wat2wasm tmp/a.wast -o bin/a.wasm && wasm-interp -r run bin/a.wasm
+python3 tools/prep.py src/puzzle-unsorted.wast INPUT="<data/test/zero.unknown.txt>" MEMORY=1 ROUNDS=1 RESULT=0 && wat2wasm tmp/a.wast -o bin/a.wasm && wasm-interp -r run bin/a.wasm
 
-python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=128 ROUNDS=25 RESULT=LEN && wat2wasm tmp/a.wast -o bin/a.wasm && wasmtime --invoke run bin/a.wasm
+python3 tools/prep.py src/puzzle-unsorted.wast INPUT="<data/sample.55312.txt>" MEMORY=128 ROUNDS=25 RESULT=LEN && wat2wasm tmp/a.wast -o bin/a.wasm && wasmtime --invoke run bin/a.wasm
 
 217812
+
+wrong: 185451148

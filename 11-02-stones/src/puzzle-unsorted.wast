@@ -1,6 +1,7 @@
 ;; AOC day 11 part 1
 ;; python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=1 ROUNDS=25 RESULT=0
 ;; RESULT can be either a number or LEN
+;; Non-order preserving implementation (faster)
 
 ;;  MAX_UINT64/2024
 ;;: set WILL_OVERFLOW_OVER=9114003988986932
@@ -22,27 +23,19 @@
     ;;: insert INPUT|i64|bin
   )
 
-  (func $unshift (param $idx i32) (param $new i64) (local $max i32)
+  ;; Here is where the order preserving property breaks
+  ;; Note backwardness-- right goes in old cell, left in new cell 
+  (func $split (param $idx i32) (param $new i64)
     (global.get $len)
-    (local.tee $max) ;; old len is new final index
+    (local.get $idx)
+    (i64.load)
+    (local.get $idx)
+    (local.get $new)
+    (i64.store)
+    (i64.store)
+    (global.get $len)
     (i32.add (i32.const 8))
     (global.set $len)
-
-    (loop $copy
-      (local.get $idx) ;; a
-      (i32.const 8)    ;; 1
-      (i32.add)        ;; b = a + 1
-      (local.tee $idx) ;; $idx = clone(b) [ $idx = $idx + 1 ]
-      (local.get $new) ;; c = $new
-      (local.get $idx) ;; d = $idx
-      (i64.load)       ;; e = *d
-      (local.set $new) ;; $new = e        [ $new = *$idx ]
-      (i64.store)      ;; *b = old(c)     [ *$idx = old($new )]
-      (local.get $max)
-      (local.get $idx)
-      (i32.gt_u)
-      (br_if $copy)
-    )
   )
   (func $run (result i64) (local $pass i32) (local $idx i32)
       (local $current i64) (local $tcurrent i64) (local $tdivider i64)
@@ -110,7 +103,7 @@
                         (local.get $current)
                         (local.get $tdivider)
                         (i64.rem_u)
-                        (call $unshift)
+                        (call $split)
                       )
                     )
                   )

@@ -1,6 +1,7 @@
 ;; AOC day 11 part 1
 ;; python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=1 ROUNDS=25 RESULT=0
 ;; RESULT can be either a number or LEN
+;; Linked list implementation-- does not work-- bug somewhere in unshift
 
 ;;  MAX_UINT64/2024
 ;;: set WILL_OVERFLOW_OVER=9114003988986932
