@@ -22,27 +22,62 @@
     ;;: insert INPUT|i64|bin
   )
 
-  (func $unshift (param $idx i32) (param $new i64) (local $max i32)
+  ;; Memory is packed as an array of 8-byte numbers followed by 4-byte next pointers
+  ;; 0 indicates the end of the linked list (safe because nodes can't be deleted and we don't want loops)
+  (func $prepare_mem (local $from i32) (local $to i32) (local $last i32)
     (global.get $len)
-    (local.tee $max) ;; old len is new final index
-    (i32.add (i32.const 8))
+    (local.tee $from)
+    (i32.div_u (i32.const 8))
+    (i32.mul (i32.const 12))
+    (local.tee $to)
     (global.set $len)
+    (i32.const 0)
+    (local.set $last)
 
-    (loop $copy
-      (local.get $idx) ;; a
-      (i32.const 8)    ;; 1
-      (i32.add)        ;; b = a + 1
-      (local.tee $idx) ;; $idx = clone(b) [ $idx = $idx + 1 ]
-      (local.get $new) ;; c = $new
-      (local.get $idx) ;; d = $idx
-      (i64.load)       ;; e = *d
-      (local.set $new) ;; $new = e        [ $new = *$idx ]
-      (i64.store)      ;; *b = old(c)     [ *$idx = old($new )]
-      (local.get $max)
-      (local.get $idx)
-      (i32.gt_u)
-      (br_if $copy)
+    (loop $prepare
+      (local.get $to)           ;; a = $to
+      (i32.sub (i32.const 12))  ;; b = a - 12
+      (local.set $to)           ;; $to = clone($b)
+      (block $copy_number
+        (local.get $to)
+        (i32.eq (i32.const 0))
+        (br_if $copy_number)
+
+        (local.get $to)
+        (local.get $from)         ;; c = $from
+        (i32.sub (i32.const 8))   ;; d = c - 8
+        (local.tee $from)         ;; $from = clone(d)
+        (i64.load)                ;; e = *d          [[ e = *($from - 8) ]]
+        (i64.store)               ;; *b = e          [[ *(to - 12) = *($from - 8) ]]
+      )
+      (local.get $to)           ;; f = $to         [[ ---------- ]]
+      (i32.add (i32.const 8))   ;; g = f + 8
+      (local.get $last)         ;; h = $last
+      (i32.store)               ;; *g = h          [[ *(new(to) + 8) = $last ]]
+      (local.get $to)           ;; i = $to
+      (local.tee $last)         ;; $last = i       [[ $last = new(to) ]]
+      (br_if $prepare)
     )
+  )
+
+  (func $unshift (param $idx i32) (param $new i64) (local $next i32)
+    (local.get $idx)
+    (i32.add (i32.const 8))
+    (i32.load)
+    (local.tee $next)
+    (global.get $len)
+    (i32.store)
+    (global.get $len)
+    (local.get $new)
+    (i64.store)
+    (global.get $len)
+    (i32.add (i32.const 8))
+    (local.get $next)
+    (i32.store)
+    
+    (global.get $len)
+    (i32.add (i32.const 12))
+    (global.set $len)
   )
   (func $run (result i64) (local $pass i32) (local $idx i32)
       (local $current i64) (local $tcurrent i64) (local $tdivider i64)
@@ -50,6 +85,7 @@
     (local.set $pass (i32.const 000
         ;;: insert ROUNDS
     ))
+    (call $prepare_mem)
     (block $countdown_done
       (loop $countdown
         ;; Loop always starts with $pass atop stack
@@ -58,13 +94,11 @@
         (i32.eq)
         (br_if $countdown_done)
 
-        (local.set $idx (global.get $len))
+        (local.set $idx (i32.const 000
+          ;;: insert ARRAYP
+        ))
         (loop $sweep
           (local.get $idx)
-          (i32.const 8)
-          (i32.sub)
-          (local.tee $idx)
-
           (i64.load) ;; This Is The Number
           (local.tee $current)
 
@@ -143,11 +177,11 @@
 
           ;; Continue if that wasn't the lowest cell
           (local.get $idx)
-          (i32.const 000
-              ;;: insert ARRAYP
-            )
-          (i32.gt_u)
-          (br_if $sweep)
+          (i32.add (i32.const 8))
+          (i32.load)
+          (local.tee $idx)
+
+          (br_if $sweep) ;; Only continue if next node nonzero
         )
 
         ;; Done; subtract one pass and leave on stack
@@ -164,14 +198,15 @@
     ;;: if RESULT=LEN
     ;; Access global and convert to array size
     (global.get $len)
-    (i32.const 8)
+    (i32.const 12)
     (i32.div_u)
     (i64.extend_i32_u)
     ;;: else
     (i64.load (i32.const 000
         ;; Access requested item in array
-        ;;: insert RESULT|*:8
+        ;;: insert RESULT
       ))
+    ;;(i64.extend_i32_u)
     ;;: end
 
     ;; drop (local.get $debug) ;; uncomment to debug
