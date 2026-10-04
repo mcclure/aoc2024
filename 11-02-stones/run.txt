@@ -11,10 +11,14 @@ wasmtime --invoke add bin/simple.wasm 1 2
 # DOESN'T WORK
 wat2wasm src/test/log.wast -o bin/log.wasm
 
+# Interp
+python3 tools/prep.py src/puzzle.wast INPUT="<data/test/zero.unknown.txt>" MEMORY=65536 ROUNDS=1 RESULT=ADDR8 ADDR=0 && wat2wasm tmp/a.wast -o bin/a.wasm && wasm-interp -r run bin/a.wasm
 
-python3 tools/prep.py src/puzzle-unsorted.wast INPUT="<data/test/zero.unknown.txt>" MEMORY=1 ROUNDS=1 RESULT=0 && wat2wasm tmp/a.wast -o bin/a.wasm && wasm-interp -r run bin/a.wasm
+# wasmtime
+python3 tools/prep.py src/puzzle-unsorted.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=25 RESULT=LEN && wat2wasm tmp/a.wast -o bin/a.wasm && wasmtime --invoke run bin/a.wasm
 
-python3 tools/prep.py src/puzzle-unsorted.wast INPUT="<data/sample.55312.txt>" MEMORY=128 ROUNDS=25 RESULT=LEN && wat2wasm tmp/a.wast -o bin/a.wasm && wasmtime --invoke run bin/a.wasm
+# wasmtime + gdb
+python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=25 RESULT=LEN && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && wasmtime -g --invoke run bin/a.wasm
 
 217812
 
