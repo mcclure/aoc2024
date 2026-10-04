@@ -11,12 +11,15 @@
 # ;;: insert VAR
 # ;;: set VAR=VAL
 # ;;: setv VAR=VAR
+# ;;: error MESSAGE, PUNCTUATION AND SPACES OKAY
 # Additionally all instances of the string 000 (or string specified as --delete) will be deleted
 # Additionally VAR may be <VAR> to load var as filename
 # Additionally VAR may be <VAR>|len for len of var file
+# Additionally VAR may be <VAR>|i32 (or |i64) for var file translated from ascii to binary packed integers
 # Addiitonally VAR may be <VAR>|bin for escaped binary string of var file
 # Addiitonally VAR may be VAR|+:N for some integer N to add N to VAR (assuming var represents an int)
 # Addiitonally VAR may be VAR|*:N for some integer N to mul N by VAR (assuming var represents an int)
+# Addiitonally VAR may be VAR|/:N for some integer N to div N by VAR (assuming var represents an int)
 
 #
 # Command line syntax:
@@ -130,13 +133,15 @@ def parse(s, keytag, iskey=False, maynull=False):
             else:
                 fn = mod.split(":")
                 if len(fn) > 1:
-                    (plus, mul) = (fn[0] == "+", fn[0] == "*")
-                    if len(fn) == 2 and (plus or mul):
+                    (plus, mul, div) = (fn[0] == "+", fn[0] == "*", fn[0] == "/")
+                    if len(fn) == 2 and (plus or mul or div):
                         try:
                             if plus:
                                 s = str(int(s) + int(fn[1]))
                             if mul:
                                 s = str(int(s) * int(fn[1]))
+                            if div:
+                                s = str(int(s) // int(fn[1]))
                         except ValueError:
                             print("WARNING: FOR KEY %s PIPE DIRECTIVE %s%s%s, COULD NOT CONVERT TO INT" % (keytag or s, s, fn[0], fn[1]))
                             return ""
@@ -172,10 +177,12 @@ commandp = re.compile(r'^\s*;;:\s*(\S+)(?:\s+(\S.*))?', re.S) # Capture command 
 
 # Stack for nested if sequences
 eatstack = [] # Each entry can be False (not eating), True (eating) or "super" (eat all clauses)
+linecount = 0
 
 with utfOpen(inpath) as inf:
     with open(outpath, "w") as outf:
         for line in inf.readlines():
+            linecount += 1
             eating = len(eatstack) > 0 and eatstack[-1]
             match = commandp.match(line)
             if match:
@@ -187,7 +194,11 @@ with utfOpen(inpath) as inf:
                     print("CMD", cmd, arg, eatstack)
                 iselseif = cmd == "elseif"
                 issetv = cmd == "setv"
-                if cmd == "insert":
+                if cmd == "error":
+                    if not eating:
+                        print("Error at line %d: %s" % (linecount, arg), file=sys.stderr)
+                        sys.exit(1)
+                elif cmd == "insert":
                     if not eating:
                         outf.write(parse(arg, None, True))
                         outf.write("\n")
@@ -217,7 +228,7 @@ with utfOpen(inpath) as inf:
                         assignd[key.lower()] = value
                     else:
                         if issetv:
-                            print("WARNING: BLANK SETV FOR KEY %s", key)
+                            print("WARNING LINE %D: BLANK SETV FOR KEY %s", key)
                         else:
                             del assignd[key.lower()]
 
