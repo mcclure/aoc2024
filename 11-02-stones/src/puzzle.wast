@@ -2,7 +2,9 @@
 ;; python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=75 RESULT=STONES
 ;; RESULT can be either ADDR4, ADDR8, LEN, or STONES
 ;; ADDR can be accompanied with ADDR=(addr)
-;; Note: Has only been tested with INPUT files of at least two entries
+;; Restrictions:
+;;   - Has not been tested with input files with duplicate entries
+;;   - Has not been tested with INPUT files of fewer than two entries
 
 ;; Terrifying "one bucket hash table" implementation
 ;; For this we require the entire 4GB. We split the space into 8ths and assign it to 5 arrays:
@@ -54,7 +56,7 @@
   (func $prepare_mem (local $idx i32)
     (loop $fill
       (local.get $idx)
-      (i32.mul (i32.const 4))
+      (i32.mul (i32.const 8))
       (i32.add (i32.const 000
         ;;: insert COUNT
       ))
@@ -145,17 +147,13 @@
       (i64.const 0)
       (i64.store)
 
-      ;; Read and increment COUNT
+      ;; Overwrite COUNT
       (local.get $idx)
       (i32.mul (i32.const 8))
       (i32.add (i32.const 000
         ;;: insert COUNT
       ))
-      (local.tee $ptr)
-      (local.get $ptr)
-      (i64.load)
       (local.get $value)
-      (i64.add)
       (i64.store)
 
       ;; Increment $stones
@@ -211,7 +209,7 @@
       ;; Item not found, must create item
       (global.get $len)
       (local.tee $result)
-      (i32.mul (i32.const 4)) ;; Convert len to addr-- assume NUMBERS is always 0
+      (i32.mul (i32.const 8)) ;; Convert len to addr-- assume NUMBERS is always 0
       (local.get $stone)
       (i64.store) ;; Populate NUMBERS. And then we can stop because everything else defaults to 0
       (global.get $len)
@@ -281,6 +279,7 @@
         ;; Calculate
         (global.get $len)
         (local.set $new_watermark)
+        (local.set $stones (i64.const 0))
 
         (block $sweep_done
           (loop $sweep
