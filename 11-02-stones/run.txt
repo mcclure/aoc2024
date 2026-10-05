@@ -18,7 +18,8 @@ python3 tools/prep.py src/puzzle.wast INPUT="<data/test/zero.unknown.txt>" MEMOR
 python3 tools/prep.py src/puzzle-unsorted.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=25 RESULT=LEN && wat2wasm tmp/a.wast -o bin/a.wasm && wasmtime --invoke run bin/a.wasm
 
 # wasmtime + gdb
-python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=25 RESULT=LEN && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && wasmtime -g --invoke run bin/a.wasm
+python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=25 RESULT=LEN && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && gdb --args wasmtime -g --invoke run -D debug-info -O opt-level=0 bin/a.wasm
+
 
 217812
 

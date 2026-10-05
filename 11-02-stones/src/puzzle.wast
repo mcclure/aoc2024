@@ -214,6 +214,9 @@
       (i32.mul (i32.const 4)) ;; Convert len to addr-- assume NUMBERS is always 0
       (local.get $stone)
       (i64.store) ;; Populate NUMBERS. And then we can stop because everything else defaults to 0
+      (global.get $len)
+      (i32.add (i32.const 1))
+      (global.set $len)
     )
 
     (local.get $idx) ;; Note: This value is what will be returned from the function
@@ -364,8 +367,10 @@
               )
             )
 
-            ;; Continue if that wasn't the lowest cell
+            ;; Continue if that wasn't the highest cell
             (local.get $watermark)
+            (i32.add (i32.const 1))
+            (local.tee $watermark)
             (local.get $new_watermark)
             (i32.lt_u)
             (br_if $sweep)
@@ -400,12 +405,12 @@
     ;;: elseif RESULT=ADDR4
     (i32.load (i32.const 000
         ;; Access requested address in memory
-        ;;: insert RESULT
+        ;;: insert ADDR
       ))
     ;;: elseif RESULT=ADDR8
     (i64.load (i32.const 000
         ;; Access requested address in memory
-        ;;: insert RESULT
+        ;;: insert ADDR
       ))
     ;;: else
       ;;: error RESULT= not recognized. See comments at top of wast file.
