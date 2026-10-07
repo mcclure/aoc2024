@@ -28,11 +28,23 @@
 
 ;;: set MAXTABLE=134217727
 
+;;: if HEXDEBUG
+
+;;: set NUMBERS=0
+;;: set   COUNT=0x100
+;;: set   NEXT1=0x1000
+;;: set   NEXT2=0x10000
+;;: set PENDING=0x100000
+
+;;: else
+
 ;;: set NUMBERS=0
 ;;: set   COUNT=268435456
 ;;: set   NEXT1=536870912
 ;;: set   NEXT2=671088640
 ;;: set PENDING=805306368
+
+;;: end
 
 ;;  MAX_UINT64/2024
 ;;: set WILL_OVERFLOW_OVER=9114003988986932
@@ -98,7 +110,7 @@
       (i32.add (i32.const 000
         ;;: insert COUNT
       ))
-      (i64.load)
+      (i64.load) ;; Stack now has next1/pending ptr, then next1/pending value, then count value atop
       (local.tee $count)
       (i64.add)  ;; Stack now has next1/pending ptr, then next1/pending value + count value atop
       (i64.store)
@@ -175,7 +187,7 @@
   )
 
   ;; Locate a stone, creating it if it doesn't exist. Increment PENDING by one.
-  (func $find (param $stone i64) (result i32) (local $idx i32) (local $result i32)
+  (func $find (param $stone i64) (result i32) (local $idx i32) (local $ptr i32) (local $result i32)
     (block $scan_success
       (block $scan_fail
         (loop $scan
@@ -217,16 +229,16 @@
       (global.set $len)
     )
 
-    (local.get $idx) ;; Note: This value is what will be returned from the function
+    (local.get $result) ;; Note: This value is what will be returned from the function
 
     ;; Perform increment
-    (local.get $idx)
-    (i32.mul (i32.const 4))
+    (local.get $result)
+    (i32.mul (i32.const 8))
     (i32.add (i32.const 000
       ;;: insert PENDING
     ))
-    (local.tee $idx) ;; Slightly abusing the "style guide" of this program, we here use $idx as scratch to dup a ptr
-    (local.get $idx)
+    (local.tee $ptr) ;; Extra variable just so I don't confuse myself by storing a pointer in an "$idx"
+    (local.get $ptr)
     (i64.load)
     (i64.add (i64.const 1))
     (i64.store)
@@ -239,8 +251,8 @@
       ;;: insert NEXT1
     )
     (i32.add)
-    (local.get $left)
-    (call $find)
+    (local.get $left) ;; Stack is now NEXT1 ptr, then left-value atop
+    (call $find)      ;; Stack is now NEXT1 ptr, then left-index atop
     (i32.store) ;; Store find result into next1[$current_at]
     (local.get $current_at)
     (i32.mul (i32.const 4))
@@ -342,11 +354,12 @@
                       )
                     )
                     (else ;; oops, we just proved odd digits
-                      (local.get $current)
-                      (i64.const 000 ;; real quick, test safety
+                      (local.get $current) ;; real quick, test safety --
+                      ;; WILL_OVERFLOW_OVER is the highest number that can be multiplied safely by 2014
+                      (i64.const 000 ;;
                         ;;: insert WILL_OVERFLOW_OVER
                       )
-                      (i64.gt_u) ;; I hate the ordering here
+                      (i64.gt_u) ;; I hate the ordering here.
                       (if
                         (then unreachable)
                         (else ;; Safe to multiply
@@ -406,6 +419,7 @@
         ;; Access requested address in memory
         ;;: insert ADDR
       ))
+    (i64.extend_i32_u)
     ;;: elseif RESULT=ADDR8
     (i64.load (i32.const 000
         ;; Access requested address in memory
@@ -415,7 +429,8 @@
       ;;: error RESULT= not recognized. See comments at top of wast file.
     ;;: end
 
-    ;; drop (local.get $debug) ;; uncomment to debug
+    ;; drop
+    ;; (local.get $debug) ;; uncomment to debug
   )
   (export "run" (func $run))
 )

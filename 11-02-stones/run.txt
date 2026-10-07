@@ -15,11 +15,14 @@ wat2wasm src/test/log.wast -o bin/log.wasm
 python3 tools/prep.py src/puzzle.wast INPUT="<data/test/zero.unknown.txt>" MEMORY=65536 ROUNDS=1 RESULT=ADDR8 ADDR=0 && wat2wasm tmp/a.wast -o bin/a.wasm && wasm-interp -r run bin/a.wasm
 
 # wasmtime
-python3 tools/prep.py src/puzzle-unsorted.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=25 RESULT=LEN && wat2wasm tmp/a.wast -o bin/a.wasm && wasmtime --invoke run bin/a.wasm
+python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=25 RESULT=STONES && wat2wasm tmp/a.wast -o bin/a.wasm && wasmtime --invoke run bin/a.wasm
 
 # wasmtime + gdb
-python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=25 RESULT=LEN && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && gdb --args wasmtime -g --invoke run -D debug-info -O opt-level=0 bin/a.wasm
+python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=1 RESULT=LEN && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && gdb --args wasmtime --invoke run -D debug-info -O opt-level=0 bin/a.wasm
 
+# wasm + lldb ( https://docs.wasmtime.dev/examples-debugging-guest.html )
+python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=1 RESULT=STONES && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && wasmtime -g 1234 --invoke run -D debug-info -O opt-level=0 bin/a.wasm
+lldb # then enter # process connect --plugin wasm connect://0:1234
 
 217812
 

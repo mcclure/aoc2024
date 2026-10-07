@@ -221,19 +221,20 @@ with utfOpen(inpath) as inf:
                 elif cmd == "end":
                     eatstack.pop()
                 elif cmd == "set" or issetv:
-                    (key, eq, value) = arg.partition("=")
-                    if eq:
-                        if issetv:
-                            value = parse(value, key, True)
-                        assignd[key.lower()] = value
-                    else:
-                        if issetv:
-                            print("WARNING LINE %D: BLANK SETV FOR KEY %s", key)
+                    if not eating:
+                        (key, eq, value) = arg.partition("=")
+                        if eq:
+                            if issetv:
+                                value = parse(value, key, True)
+                            assignd[key.lower()] = value
                         else:
-                            del assignd[key.lower()]
+                            if issetv:
+                                print("WARNING LINE %D: BLANK SETV FOR KEY %s", key)
+                            else:
+                                del assignd[key.lower()]
 
-                    if verbose:
-                        print("\tCMD-SET", assignd)
+                        if verbose:
+                            print("\tCMD-SET", (key, eq, value), "=>", assignd)
                 else:
                     print("WARNING: UNRECOGNIZED COMMAND %s" % cmd)
                 if verbose:
