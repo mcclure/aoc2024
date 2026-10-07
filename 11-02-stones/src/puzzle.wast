@@ -270,8 +270,12 @@
     ))
   )
 
-  (func $run (result i64) (local $pass i32)
-      (local $watermark i32) (local $new_watermark i32) (local $stones i64)
+  (func $run
+;;: if STARTDEBUG
+;;: else
+      (result i64)
+;;: end
+      (local $pass i32) (local $watermark i32) (local $new_watermark i32) (local $stones i64)
       (local $current_at i32) (local $current i64) (local $tcurrent i64) (local $tdivider i64)
       ;;(local $debug i64)
     (call $prepare_mem)
@@ -431,6 +435,13 @@
 
     ;; drop
     ;; (local.get $debug) ;; uncomment to debug
+
+;;: if STARTDEBUG
+    drop
+;;: end
   )
   (export "run" (func $run))
+;;: if STARTDEBUG
+  (start $run)
+;;: end
 )

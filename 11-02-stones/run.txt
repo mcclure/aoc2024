@@ -21,7 +21,7 @@ python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=655
 python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=1 RESULT=LEN && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && gdb --args wasmtime --invoke run -D debug-info -O opt-level=0 bin/a.wasm
 
 # wasm + lldb ( https://docs.wasmtime.dev/examples-debugging-guest.html )
-python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=1 RESULT=STONES && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && wasmtime -g 1234 --invoke run -D debug-info -O opt-level=0 bin/a.wasm
+python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" STARTDEBUG=1 MEMORY=65536 ROUNDS=1 RESULT=STONES && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && wasmtime -g 1234 -D debug-info -O opt-level=0 bin/a.wasm
 lldb # then enter # process connect --plugin wasm connect://0:1234
 
 217812
