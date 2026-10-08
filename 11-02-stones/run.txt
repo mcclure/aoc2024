@@ -21,9 +21,21 @@ python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=655
 python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 ROUNDS=1 RESULT=LEN && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && gdb --args wasmtime --invoke run -D debug-info -O opt-level=0 bin/a.wasm
 
 # wasm + lldb ( https://docs.wasmtime.dev/examples-debugging-guest.html )
-python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" STARTDEBUG=1 MEMORY=65536 ROUNDS=1 RESULT=STONES && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && wasmtime -g 1234 -D debug-info -O opt-level=0 bin/a.wasm
-lldb # then enter # process connect --plugin wasm connect://0:1234
+python3 tools/prep.py src/puzzle.wast INPUT="<data/sample.55312.txt>" MEMORY=65536 HEXDEBUG=1 ROUNDS=1 RESULT=STONES && wat2wasm --debug-names tmp/a.wast -o bin/a.wasm && wasmtime --invoke run -g 1234 -D debug-info -O opt-level=0 bin/a.wasm
+
+# then in another window
+lldb
+process connect --plugin wasm connect://127.0.0:1234
+break add name flush_mem
+c
+mem read -s8 -fu -c8 0x0
+mem read -s8 -fu -c8 0x100
+mem read -s4 -fu -c8 0x1000
+mem read -s4 -fu -c8 0x10000
+
 
 217812
 
 wrong: 185451148
+
+right: 259112729857522

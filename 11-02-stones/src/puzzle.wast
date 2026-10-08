@@ -187,7 +187,7 @@
   )
 
   ;; Locate a stone, creating it if it doesn't exist. Increment PENDING by one.
-  (func $find (param $stone i64) (result i32) (local $idx i32) (local $ptr i32) (local $result i32)
+  (func $find (param $stone i64) (result i32) (local $idx i32) (local $result i32)
     (block $scan_success
       (block $scan_fail
         (loop $scan
@@ -229,23 +229,11 @@
       (global.set $len)
     )
 
-    (local.get $result) ;; Note: This value is what will be returned from the function
-
-    ;; Perform increment
     (local.get $result)
-    (i32.mul (i32.const 8))
-    (i32.add (i32.const 000
-      ;;: insert PENDING
-    ))
-    (local.tee $ptr) ;; Extra variable just so I don't confuse myself by storing a pointer in an "$idx"
-    (local.get $ptr)
-    (i64.load)
-    (i64.add (i64.const 1))
-    (i64.store)
   )
 
-  (func $next_store2 (param $current_at i32) (param $left i64) (param $right_at i32)
-    (local.get $current_at)
+  (func $next_store2 (param $current_idx i32) (param $left i64) (param $right_at i32)
+    (local.get $current_idx)
     (i32.mul (i32.const 4))
     (i32.const 000
       ;;: insert NEXT1
@@ -253,8 +241,8 @@
     (i32.add)
     (local.get $left) ;; Stack is now NEXT1 ptr, then left-value atop
     (call $find)      ;; Stack is now NEXT1 ptr, then left-index atop
-    (i32.store) ;; Store find result into next1[$current_at]
-    (local.get $current_at)
+    (i32.store) ;; Store find result into next1[$current_idx]
+    (local.get $current_idx)
     (i32.mul (i32.const 4))
     (i32.const 000
       ;;: insert NEXT2
@@ -264,8 +252,8 @@
     (i32.store)
   )
 
-  (func $next_store1 (param $current_at i32) (param $left i64)
-    (call $next_store2 (local.get $current_at) (local.get $left) (i32.const 000
+  (func $next_store1 (param $current_idx i32) (param $left i64)
+    (call $next_store2 (local.get $current_idx) (local.get $left) (i32.const 000
       ;;: insert SENTINEL
     ))
   )
@@ -276,7 +264,7 @@
       (result i64)
 ;;: end
       (local $pass i32) (local $watermark i32) (local $new_watermark i32) (local $stones i64)
-      (local $current_at i32) (local $current i64) (local $tcurrent i64) (local $tdivider i64)
+      (local $current_idx i32) (local $current i64) (local $tcurrent i64) (local $tdivider i64)
       ;;(local $debug i64)
     (call $prepare_mem)
     (local.set $pass (i32.const 000
@@ -307,7 +295,6 @@
             (local.get $watermark)
             (i32.const 8)
             (i32.mul)
-            (local.tee $current_at)
             (i64.load) ;; This Is The Number
             (local.tee $current)
 
@@ -345,7 +332,7 @@
                           (br $modulo)
                         )
                         (else ;; Even digits!!!
-                          (local.get $current_at)  ;; current_at
+                          (local.get $watermark)   ;; current_idx
                           (local.get $current)
                           (local.get $tdivider)
                           (i64.div_u)              ;; left
@@ -367,7 +354,7 @@
                       (if
                         (then unreachable)
                         (else ;; Safe to multiply
-                          (local.get $current_at)
+                          (local.get $watermark) ;; current_idx
                           (local.get $current)
                           (i64.const 2024)
                           (i64.mul)
@@ -379,7 +366,7 @@
                 )
               )
               (else ;; Number was 0
-                (call $next_store1 (local.get $current_at) (i64.const 1))
+                (call $next_store1 (local.get $watermark) (i64.const 1))
               )
             )
 
@@ -441,6 +428,9 @@
 ;;: end
   )
   (export "run" (func $run))
+;;: if HEXDEBUG
+  (export "flush_mem" (func $flush_mem))
+;;: end
 ;;: if STARTDEBUG
   (start $run)
 ;;: end
