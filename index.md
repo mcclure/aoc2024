@@ -3,6 +3,8 @@ This repo is for personal use and you are not granted any particular rights to i
 Explanation: https://mastodon.social/@mcc/113743302074837530
 "Rules": https://mastodon.social/@mcc/113676228091546556
 
+REMINDER TO SELF: apt-get remove racket
+
 ---
 
 1. Lists: AppleSoft BASIC
@@ -14,4 +16,5 @@ Explanation: https://mastodon.social/@mcc/113743302074837530
 7. Operations: Haskell
 8. Stations: Fennel
 9. Disk: Ada 
-11. Stones: Textual Wasm
+11. Stones: Textual Wasm [1-BOTCH] [Week 10]
+17. CPU: Idris [Week 11]

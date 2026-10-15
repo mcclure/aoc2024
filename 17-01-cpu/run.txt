@@ -1,0 +1,1 @@
+idris2 -o puzzle src/puzzle.idr && ./bin/puzzle
