@@ -3,6 +3,13 @@ import System.File.ReadWrite
 import Data.String
 import Data.List1
 import Data.Either
+import Data.Vect
+
+record Cpu where
+    constructor NewCpu
+    ip : Int
+    reg : Vect 3 Int
+    prog: List Int
 
 main : IO ()
 main = do
@@ -13,6 +20,8 @@ main = do
 	run t
 
 where
+
+	-- Parse input file
 	load : IO String
 	load = do -- Take 1 command line argument, treat as path, return contents of file
 		args <- getArgs
@@ -44,7 +53,7 @@ where
 	interpret_program line =  -- Helper: Turn a line of format "Program: \d,\d,\d..." into a list of numbers
 		let words = split (== ' ') line in -- Split on spaces, throw away first cell
 			case words of
-				_ ::: [tape] => traverse interpret_program_value (forget (split (== ',') tape))
+				_ ::: [tape] => traverse interpret_program_value (forget <| split (== ',') tape)
 				_ => Left "Register line malformed"
 
 	-- This function is wrong and I know this function is wrong
@@ -60,6 +69,15 @@ where
 				Right (a,b,c,d)
 			_ => Left "File has too few lines"
 
+	-- Simulate CPU
+
+	step : Cpu -> IO Cpu
+	step cpu =
+		let (NewCpu ip reg prog) = cpu in
+		let opcode  = index ip prog in
+		let operand = index (ip+1) prog in
+			putStrLn (show opcode)
+
 	run : (Int, Int, Int, List Int) -> IO ()
 	run (a,b,c,program) =
-		putStrLn "Success"
+		step <| NewCpu 0 [a,b,c] program
