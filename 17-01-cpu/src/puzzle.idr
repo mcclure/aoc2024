@@ -8,9 +8,9 @@ import Data.Bits
 
 record Cpu where
     constructor NewCpu
-    ip : Nat
-    reg : Vect 3 Nat
-    prog: List Nat
+    ip : Bits64
+    reg : Vect 3 Bits64
+    prog: List Bits64
 
 main : IO ()
 main = do
@@ -35,7 +35,7 @@ where
 			Right x => pure x     -- String
 			Left x => die(show x) -- FileError
 
-	interpret_register : String -> Either String Nat
+	interpret_register : String -> Either String Bits64
 	interpret_register line = -- Helper: Turn a line of format "Register X: \d\d\d" into a number
 		let words = split (== ' ') line in -- Split on spaces, throw away first two cells
 			case words of
@@ -44,13 +44,13 @@ where
 					_ => Left "Register value is not number"
 				_ => Left "Register line malformed"
 
-	interpret_program_value : String -> Either String Nat
+	interpret_program_value : String -> Either String Bits64
 	interpret_program_value string =  -- Helper: Turn a string number into a number, or die
 		case parsePositive string of
 			Just i => Right i
 			_ => Left "Program tape value is not number"
 
-	interpret_program : String -> Either String (List Nat)
+	interpret_program : String -> Either String (List Bits64)
 	interpret_program line =  -- Helper: Turn a line of format "Program: \d,\d,\d..." into a list of numbers
 		let words = split (== ' ') line in -- Split on spaces, throw away first cell
 			case words of
@@ -58,8 +58,8 @@ where
 				_ => Left "Register line malformed"
 
 	-- This function is wrong and I know this function is wrong
-	interpret : String -> Either String (Nat, Nat, Nat, List Nat)
-	interpret spec = -- Naterpret the puzzle input format
+	interpret : String -> Either String (Bits64, Bits64, Bits64, List Bits64)
+	interpret spec = -- Interpret the puzzle input format
 		let specl = lines spec in
 		case specl of
 			a::b::c::_::program::_ => do
@@ -72,7 +72,7 @@ where
 
 	-- Simulate CPU
 
-	combo : Vect 3 Nat -> Nat -> IO Nat
+	combo : Vect 3 Bits64 -> Bits64 -> IO Bits64
 	combo reg operand =
 		case operand of
 			0 => pure operand
@@ -85,7 +85,7 @@ where
 			7 => die "Used forbidden combo operand"
 			_ => die "Operand above 7 somehow"
 
-	exec : Cpu -> Nat -> Nat -> IO ()
+	exec : Cpu -> Bits64 -> Bits64 -> IO ()
 	step : Cpu -> IO ()
 
 	exec (NewCpu ip reg prog) opcode operand  =
@@ -98,9 +98,12 @@ where
 				let b = xor b operand in
 					step <| NewCpu (ip+2) [a, b, c] prog
 			2 =>    -- BST
-				pure ()
+				let [a, _, c] = reg in do
+					cop <- combo reg operand
+					step <| NewCpu (ip+2) [a, cop, c] prog
 			3 =>    -- JNZ
-				pure ()
+				let ip = (let a::_ = reg in (if a==0 then ip+2 else operand)) in
+					step <| NewCpu ip reg prog
 			4 =>    -- BXC
 				pure ()
 			5 => do -- OUT
@@ -114,19 +117,20 @@ where
 			_ =>
 				die "Unexpected opcode"
 
-	step (NewCpu ip reg prog) =
-		case inBounds ip prog of
+	step (NewCpu ip reg prog) = -- ip is a Bits64.
+		let ip_idx = cast ip in -- Notice I don't so much as hint what i casted *to*
+		case inBounds ip_idx prog of
 			Yes _ =>
-				case inBounds (ip+1) prog of
+				case inBounds (ip_idx+1) prog of
 					Yes _ =>
-						let opcode  = index ip prog in
-						let operand = index (ip+1) prog in
+						let opcode  = index ip_idx prog in
+						let operand = index (ip_idx+1) prog in
 							putStrLn "Help"
 					No _ =>
 						die "Invalid file: Bad operand parity"
 			No _ =>
-				pure ()
+				pure () -- Natural end of file
 
-	run : (Nat, Nat, Nat, List Nat) -> IO ()
+	run : (Bits64, Bits64, Bits64, List Bits64) -> IO ()
 	run (a,b,c,program) =
 		step <| NewCpu 0 [a,b,c] program
