@@ -122,6 +122,7 @@ where
 			2 =>    -- BST
 				let [a, _, c] = reg in do
 					cop <- combo reg operand
+					let cop = mod cop 8
 					step <| NewCpu (ip+2) [a, cop, c] prog
 			3 =>    -- JNZ
 				-- I really wanted to nest the a destructure inside the let assignment but the linebreak rules said no :(
