@@ -1,3 +1,5 @@
+-- Usage: puzzle [-v] filename
+
 import System
 import System.File.ReadWrite
 import Data.String
@@ -13,27 +15,33 @@ record Cpu where
     reg : Vect 3 Bits64
     prog: List Bits64
 
+record Config where
+	constructor NewConfig
+	verbose : Bool
+
 main : IO ()
 main = do
-	spec <- load
+	(spec, verbose) <- load
 	t <- case (interpret spec) of
 		Right t => pure t
 		Left s => die s
-	run t
+	if verbose then let (_,_,_,program) = t in putStrLn "Program \{show program}" else pure () -- Verbose
+	run t verbose
 
 where
 
 	-- Parse input file
-	load : IO String
+	load : IO (String, Bool)
 	load = do -- Take 1 command line argument, treat as path, return contents of file
 		args <- getArgs
-		arg <- case args of
-			[_,x] => pure x
+		(arg,verbose):(String,Bool) <- case args of
+			[_,x] => pure (x, False)
+			[_, "-v", x] => pure (x, True)
 			_ => die "Wrong number of arguments"
 
 		spec <- readFile arg
 		case spec of
-			Right x => pure x     -- String
+			Right x => pure (x, verbose)     -- String
 			Left x => die(show x) -- FileError
 
 	interpret_register : String -> Either String Bits64
@@ -86,8 +94,8 @@ where
 			7 => die "Used forbidden combo operand 7"
 			_ => die "Combo operand above 7 somehow: \{show operand}"
 
-	exec : Cpu -> Bits64 -> Bits64 -> IO ()
-	step : Cpu -> IO ()
+	exec : Config-> Cpu -> Bits64 -> Bits64 -> IO ()
+	step : Config-> Cpu -> IO ()
 
 	divide : Vect 3 Bits64 -> Bits64 -> IO Bits64
 	divide reg operand =
@@ -100,7 +108,8 @@ where
 					pure <| div a divisor
 				_ =>
 					die "bad exponent \{show cop_idx}"
-	exec (NewCpu ip reg prog) opcode operand  =
+	exec config (NewCpu ip reg prog) opcode operand  =
+		let step = step config in -- curry
 		case opcode of
 			0 =>    -- ADV
 				let [_, b, c] = reg in do
@@ -140,21 +149,31 @@ where
 			_ =>
 				die "Unexpected opcode \{show opcode}"
 
-	step cpu = -- ip is a Bits64.
-		let (NewCpu ip _ prog) = cpu in
+	step config cpu = -- ip is a Bits64.
+		let (NewCpu ip reg prog) = cpu in
 		let ip_idx = cast ip in -- Notice I don't so much as hint what i casted *to*
-		case inBounds ip_idx prog of
-			Yes _ =>
-				case inBounds (ip_idx+1) prog of
-					Yes _ =>
-						let opcode  = index ip_idx prog in
-						let operand = index (ip_idx+1) prog in
-							exec cpu opcode operand
-					No _ =>
-						die "Invalid file: Bad operand parity"
-			No _ =>
-				pure () -- Natural end of file
+		do
+			case config of -- Verbose
+				(NewConfig True) =>
+					let [a,b,c] = reg in
+					putStrLn "\tA: \{show a}\tB: \{show b}\tC:\{show c}\tip: \{show ip}"
+				_ => pure ()
+			case inBounds ip_idx prog of
+				Yes _ =>
+					case inBounds (ip_idx+1) prog of
+						Yes _ =>
+							let opcode  = index ip_idx prog in
+							let operand = index (ip_idx+1) prog in
+								exec config cpu opcode operand
+						No _ =>
+							die "Invalid file: Bad operand parity"
+				No _ => do
+					case config of -- Verbose
+						(NewConfig True) =>
+							putStrLn "\n\tEOF"
+						_ => pure ()
+					pure () -- Natural end of file
 
-	run : (Bits64, Bits64, Bits64, List Bits64) -> IO ()
-	run (a,b,c,program) =
-		step <| NewCpu 0 [a,b,c] program
+	run : (Bits64, Bits64, Bits64, List Bits64) -> Bool -> IO ()
+	run (a,b,c,program) verbose =
+		step (NewConfig verbose) <| NewCpu 0 [a,b,c] program
