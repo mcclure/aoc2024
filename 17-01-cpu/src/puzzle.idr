@@ -83,8 +83,8 @@ where
 			4 => pure <| index 0 reg
 			5 => pure <| index 1 reg
 			6 => pure <| index 2 reg
-			7 => die "Used forbidden combo operand"
-			_ => die "Operand above 7 somehow"
+			7 => die "Used forbidden combo operand 7"
+			_ => die "Combo operand above 7 somehow: \{show operand}"
 
 	exec : Cpu -> Bits64 -> Bits64 -> IO ()
 	step : Cpu -> IO ()
@@ -99,7 +99,7 @@ where
 					let divisor = shiftL (the Bits64 1) cop_idx2 in
 					pure <| div a divisor
 				_ =>
-					die "bad exponent"
+					die "bad exponent \{show cop_idx}"
 	exec (NewCpu ip reg prog) opcode operand  =
 		case opcode of
 			0 =>    -- ADV
@@ -138,7 +138,7 @@ where
 					c <- divide reg operand
 					step <| NewCpu (ip+2) [a, b, c] prog
 			_ =>
-				die "Unexpected opcode"
+				die "Unexpected opcode \{show opcode}"
 
 	step cpu = -- ip is a Bits64.
 		let (NewCpu ip _ prog) = cpu in
