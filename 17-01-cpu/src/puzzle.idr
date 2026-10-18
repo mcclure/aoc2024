@@ -5,6 +5,7 @@ import Data.List1
 import Data.Either
 import Data.Vect
 import Data.Bits
+import Data.Fin
 
 record Cpu where
     constructor NewCpu
@@ -88,10 +89,22 @@ where
 	exec : Cpu -> Bits64 -> Bits64 -> IO ()
 	step : Cpu -> IO ()
 
+	divide : Vect 3 Bits64 -> Bits64 -> IO Bits64
+	divide reg operand =
+		let a::_ = reg in do
+			cop <- combo reg operand
+			let cop_idx = cast {to = Nat} cop
+			case natToFin cop_idx 64 of
+				Just cop_idx2 =>
+					let divisor = shiftL (the Bits64 1) cop_idx2 in
+					pure <| div a divisor
+				_ =>
+					die "bad exponent"
 	exec (NewCpu ip reg prog) opcode operand  =
 		case opcode of
 			0 =>    -- ADV
-				let [a, b, c] = reg in
+				let [_, b, c] = reg in do
+					a <- divide reg operand
 					step <| NewCpu (ip+2) [a, b, c] prog
 			1 =>    -- BXL
 				let [a, b, c] = reg in
@@ -102,22 +115,33 @@ where
 					cop <- combo reg operand
 					step <| NewCpu (ip+2) [a, cop, c] prog
 			3 =>    -- JNZ
-				let ip = (let a::_ = reg in (if a==0 then ip+2 else operand)) in
+				-- I really wanted to nest the a destructure inside the let assignment but the linebreak rules said no :(
+				let a::_ = reg in
+				let ip =
+					if a==0 then ip+2 else operand
+				in
 					step <| NewCpu ip reg prog
 			4 =>    -- BXC
-				pure ()
+				let [a, b, c] = reg in
+				let b = xor b c in
+					step <| NewCpu (ip+2) [a, b, c] prog
 			5 => do -- OUT
 				cop <- combo reg operand
-				putStrLn <| show cop
+				putStrLn <| show (mod cop 8)
 				step <| NewCpu (ip+2) reg prog
 			6 =>    -- BDV
-				pure ()
+				let [a, _, c] = reg in do
+					b <- divide reg operand
+					step <| NewCpu (ip+2) [a, b, c] prog
 			7 =>    -- CDV
-				pure ()
+				let [a, b, _] = reg in do
+					c <- divide reg operand
+					step <| NewCpu (ip+2) [a, b, c] prog
 			_ =>
 				die "Unexpected opcode"
 
-	step (NewCpu ip reg prog) = -- ip is a Bits64.
+	step cpu = -- ip is a Bits64.
+		let (NewCpu ip _ prog) = cpu in
 		let ip_idx = cast ip in -- Notice I don't so much as hint what i casted *to*
 		case inBounds ip_idx prog of
 			Yes _ =>
@@ -125,7 +149,7 @@ where
 					Yes _ =>
 						let opcode  = index ip_idx prog in
 						let operand = index (ip_idx+1) prog in
-							putStrLn "Help"
+							exec cpu opcode operand
 					No _ =>
 						die "Invalid file: Bad operand parity"
 			No _ =>
