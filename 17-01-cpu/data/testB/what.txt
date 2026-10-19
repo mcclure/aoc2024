@@ -1,0 +1,3 @@
+test each instruction one by one-- with superfluous values in unused registers
+
+note 3 testing "values over 32 bits" as well

@@ -1,0 +1,5 @@
+Register A: 333
+Register B: 444
+Register C: 555
+
+Program: 5,0,5,1,5,2,5,3,5,4,5,5,5,6

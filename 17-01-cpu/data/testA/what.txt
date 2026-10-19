@@ -1,0 +1,1 @@
+test each instruction one by one. note 5 testing combo as well as OUT

@@ -1,0 +1,5 @@
+Register A: 7
+Register B: 888
+Register C: 999
+
+Program: 0,1

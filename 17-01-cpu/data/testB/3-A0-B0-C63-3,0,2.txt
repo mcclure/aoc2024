@@ -1,0 +1,5 @@
+Register A: 4611686018427387907
+Register B: 0
+Register C: 63
+
+Program: 0,5,5,4,4,0,3,0,5,2

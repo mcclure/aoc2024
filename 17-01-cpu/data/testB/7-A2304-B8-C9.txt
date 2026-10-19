@@ -1,0 +1,5 @@
+Register A: 2304
+Register B: 8
+Register C: 88888
+
+Program: 7,5
