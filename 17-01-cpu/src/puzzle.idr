@@ -137,7 +137,10 @@ where
 					step <| NewCpu (ip+2) [a, b, c] prog
 			5 => do -- OUT
 				cop <- combo reg operand
-				putStrLn <| show (mod cop 8)
+				putStr <| show (mod cop 8)
+				case config of -- Newlines in verbose mode, otherwise commas
+					NewConfig True => putStrLn ""
+					_ => putStr ","
 				step <| NewCpu (ip+2) reg prog
 			6 =>    -- BDV
 				let [a, _, c] = reg in do
