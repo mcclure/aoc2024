@@ -106,8 +106,8 @@ where
 			7 => die "Used forbidden combo operand 7"
 			_ => die "Combo operand above 7 somehow: \{show operand}"
 
-	exec : Config-> Cpu -> Bits64 -> Bits64 -> IO ()
-	step : Config-> Cpu -> IO ()
+	exec : List Bits64 -> Config-> Cpu -> Bits64 -> Bits64 -> IO Result
+	step : List Bits64 -> Config-> Cpu -> IO Result
 
 	divide : Vect 3 Bits64 -> Bits64 -> IO Bits64
 	divide reg operand =
@@ -120,9 +120,10 @@ where
 					pure <| div a divisor
 				_ =>
 					die "bad exponent \{show cop_idx}"
-	exec config (NewCpu ip reg prog steps) opcode operand  =
+
+	exec output config (NewCpu ip reg prog steps) opcode operand  =
 		let ns = steps-1 in
-		let step = step config in -- curry
+		let step = step output config in -- curry
 		case opcode of
 			0 =>    -- ADV
 				let [_, b, c] = reg in do
@@ -166,7 +167,7 @@ where
 			_ =>
 				die "Unexpected opcode \{show opcode}"
 
-	step config cpu = -- ip is a Bits64.
+	step output config cpu = -- ip is a Bits64.
 		let (NewCpu ip reg prog steps) = cpu in
 		let ip_idx = cast ip in -- Notice I don't so much as hint what i casted *to*
 		do
@@ -182,7 +183,7 @@ where
 						Yes _ =>
 							let opcode  = index ip_idx prog in
 							let operand = index (ip_idx+1) prog in
-								exec config cpu opcode operand
+								exec output config cpu opcode operand
 						No _ =>
 							die "Invalid file: Bad operand parity"
 				No _ => do
@@ -190,7 +191,7 @@ where
 						(NewConfig True _) =>
 							putStrLn "\n\tEOF"
 						_ => pure ()
-					pure () -- Natural end of file
+					pure <| Success <| reverse output -- Natural end of file
 
 	swap0 : Bits64 -> Vect 3 Bits64 -> Vect 3 Bits64
 	swap0 value vec =
@@ -199,7 +200,15 @@ where
 
 	search_step : Bits64 -> Config -> Cpu -> IO ()
 	search_step try config cpu = do
-		result <- step config <| { reg $= swap0 try } cpu
+		result <- step [] config <| { reg $= swap0 try } cpu
+
+		case result of
+			Success(output) =>
+				putStrLn "Success \{show try} \{show output}"
+			Failure(msg) =>
+				putStrLn "Failure \{show try} \{msg}"
+			Timeout(_) =>
+				putStrLn "Timeout \{show try}"
 
 		search_step (try+1) config cpu
 
