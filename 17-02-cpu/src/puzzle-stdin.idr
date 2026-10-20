@@ -34,11 +34,23 @@ main = do
 	t <- case (interpret spec) of
 		Right t => pure t
 		Left s => die s
+
+	candidates <- allLines []
+	let candidates = reverse candidates
+	putStrLn "Candidates \{show candidates}"
+
 	if verbose then let (_,_,_,program) = t in putStrLn "Program \{show program}" else pure () -- Verbose
 	let limit = cast limit
-	search verbose limit t
+	search candidates verbose limit t
 
 where
+
+	allLines : List Bits64 -> IO (List Bits64)
+	allLines accumulator = do
+		line <- getLine
+		case parsePositive line of
+			Just i => let i2 = cast i in allLines (i2::accumulator)
+			_ => pure accumulator
 
 	-- Parse input file
 	load : IO (Nat, String, Bool)
@@ -189,26 +201,30 @@ where
 		let _::vec = vec in
 		value::vec
 
-	search_step : Bits64 -> Config -> Cpu -> IO ()
-	search_step try config cpu = do
-		let cpu = { steps := config.limit } cpu
-		let cpu = { reg $= swap0 try } cpu
-		result <- step [] cpu
+	search_step : List Bits64 -> Bits64 -> Config -> Cpu -> IO ()
+	search_step candidates idx config cpu =
+		case candidates of
+			try::rest => do
+				let cpu = { steps := config.limit } cpu
+				let cpu = { reg $= swap0 try } cpu
+				result <- step [] cpu
 
-		continue <- case result of
-			Success(output) => do
-				let eq = output /= cpu.prog
-				putStrLn "Success \{show try} \{show output} eq? \{show (not eq)}"
-				pure eq
-			Failure(msg) => do
-				putStrLn "Failure \{show try} \{msg}"
-				pure True
-			Timeout(_) => do
-				putStrLn "Timeout \{show try}"
-				pure True
+				continue <- case result of
+					Success(output) => do
+						let eq = output /= cpu.prog
+						putStrLn "\{show idx}\t\{show output} eq? \{show (not eq)}"
+						pure eq
+					Failure(msg) => do
+						putStrLn "Failure \{show try} \{msg}"
+						pure True
+					Timeout(_) => do
+						putStrLn "Timeout \{show try}"
+						pure True
 
-		if continue then search_step (try+1) config cpu else pure ()
+				if continue then search_step rest (idx+1) config cpu else pure ()
 
-	search : Bool -> Bits64 -> (Bits64, Bits64, Bits64, List Bits64) -> IO ()
-	search verbose limit (a,b,c,program) =
-		search_step 0 (NewConfig verbose limit) (NewCpu 0 [a,b,c] program 0)
+			_ => pure () -- EOL
+
+	search : List Bits64 -> Bool -> Bits64 -> (Bits64, Bits64, Bits64, List Bits64) -> IO ()
+	search candidates verbose limit (a,b,c,program) =
+		search_step candidates 0 (NewConfig verbose limit) (NewCpu 0 [a,b,c] program 0)

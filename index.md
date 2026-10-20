@@ -17,4 +17,4 @@ REMINDER TO SELF: apt-get remove racket
 8. Stations: Fennel
 9. Disk: Ada 
 11. Stones: Textual Wasm [1-BOTCH] [Week 10]
-17. CPU: Idris [Week 11]
+17. CPU: Idris [Week 11] [1-FORMATTING] [2TH 165523097481149]
