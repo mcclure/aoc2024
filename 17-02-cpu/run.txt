@@ -1,0 +1,1 @@
+idris2 -o puzzle src/puzzle.idr && ./build/exec/puzzle 100 ../17-01-cpu/data/printA-7.txt
