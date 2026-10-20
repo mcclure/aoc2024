@@ -1,3 +1,5 @@
+-- Like cpu emulator, but scans for an assignment of register A
+--     that causes the program to become a quine.
 -- Usage: puzzle [-v] maxsteps filename
 
 import System
@@ -106,8 +108,8 @@ where
 			7 => die "Used forbidden combo operand 7"
 			_ => die "Combo operand above 7 somehow: \{show operand}"
 
-	exec : List Bits64 -> Config-> Cpu -> Bits64 -> Bits64 -> IO Result
-	step : List Bits64 -> Config-> Cpu -> IO Result
+	exec : List Bits64 -> Cpu -> Bits64 -> Bits64 -> IO Result
+	step : List Bits64 -> Cpu -> IO Result
 
 	divide : Vect 3 Bits64 -> Bits64 -> IO Bits64
 	divide reg operand =
@@ -121,78 +123,67 @@ where
 				_ =>
 					die "bad exponent \{show cop_idx}"
 
-	exec output config (NewCpu ip reg prog steps) opcode operand  =
+	exec output (NewCpu ip reg prog steps) opcode operand  =
 		let ns = steps-1 in
-		let step = step output config in -- curry
+		let so = step output in -- curry
 		case opcode of
 			0 =>    -- ADV
 				let [_, b, c] = reg in do
 					a <- divide reg operand
-					step <| NewCpu (ip+2) [a, b, c] prog ns
+					so <| NewCpu (ip+2) [a, b, c] prog ns
 			1 =>    -- BXL
 				let [a, b, c] = reg in
 				let b = xor b operand in
-					step <| NewCpu (ip+2) [a, b, c] prog ns
+					so <| NewCpu (ip+2) [a, b, c] prog ns
 			2 =>    -- BST
 				let [a, _, c] = reg in do
 					cop <- combo reg operand
 					let cop = mod cop 8
-					step <| NewCpu (ip+2) [a, cop, c] prog ns
+					so <| NewCpu (ip+2) [a, cop, c] prog ns
 			3 =>    -- JNZ
 				-- I really wanted to nest the a destructure inside the let assignment but the linebreak rules said no :(
 				let a::_ = reg in
 				let ip =
 					if a==0 then ip+2 else operand
 				in
-					step <| NewCpu ip reg prog ns
+					so <| NewCpu ip reg prog ns
 			4 =>    -- BXC
 				let [a, b, c] = reg in
 				let b = xor b c in
-					step <| NewCpu (ip+2) [a, b, c] prog ns
+					so <| NewCpu (ip+2) [a, b, c] prog ns
 			5 => do -- OUT
 				cop <- combo reg operand
-				putStr <| show (mod cop 8)
-				case config of -- Newlines in verbose mode, otherwise commas
-					NewConfig True _ => putStrLn ""
-					_ => putStr ","
-				step <| NewCpu (ip+2) reg prog ns
+
+				step ((mod cop 8)::output) (NewCpu (ip+2) reg prog ns)
 			6 =>    -- BDV
 				let [a, _, c] = reg in do
 					b <- divide reg operand
-					step <| NewCpu (ip+2) [a, b, c] prog ns
+					so <| NewCpu (ip+2) [a, b, c] prog ns
 			7 =>    -- CDV
 				let [a, b, _] = reg in do
 					c <- divide reg operand
-					step <| NewCpu (ip+2) [a, b, c] prog ns
+					so <| NewCpu (ip+2) [a, b, c] prog ns
 			_ =>
 				die "Unexpected opcode \{show opcode}"
 
-	step output config cpu = -- ip is a Bits64.
+	step output cpu = -- ip is a Bits64.
 		let (NewCpu ip reg prog steps) = cpu in
 		let ip_idx = cast ip in -- Notice I don't so much as hint what i casted *to*
 		do
 			if steps == 0 then die "TOO MANY STEPS" else pure ()
-			case config of -- Verbose
-				(NewConfig True _) =>
-					let [a,b,c] = reg in
-					putStrLn "\tA: \{show a}\tB: \{show b}\tC:\{show c}\tip: \{show ip}"
-				_ => pure ()
 			case inBounds ip_idx prog of
 				Yes _ =>
 					case inBounds (ip_idx+1) prog of
 						Yes _ =>
 							let opcode  = index ip_idx prog in
 							let operand = index (ip_idx+1) prog in
-								exec output config cpu opcode operand
+								exec output cpu opcode operand
 						No _ =>
 							die "Invalid file: Bad operand parity"
 				No _ => do
-					case config of -- Verbose
-						(NewConfig True _) =>
-							putStrLn "\n\tEOF"
-						_ => pure ()
 					pure <| Success <| reverse output -- Natural end of file
 
+	-- Given a list vec, remove its first value and swap in value
 	swap0 : Bits64 -> Vect 3 Bits64 -> Vect 3 Bits64
 	swap0 value vec =
 		let _::vec = vec in
@@ -200,18 +191,24 @@ where
 
 	search_step : Bits64 -> Config -> Cpu -> IO ()
 	search_step try config cpu = do
-		result <- step [] config <| { reg $= swap0 try } cpu
+		let cpu = { steps := config.limit } cpu
+		let cpu = { reg $= swap0 try } cpu
+		result <- step [] cpu
 
-		case result of
-			Success(output) =>
-				putStrLn "Success \{show try} \{show output}"
-			Failure(msg) =>
+		continue <- case result of
+			Success(output) => do
+				let eq = output /= cpu.prog
+				putStrLn "Success \{show try} \{show output} eq? \{show (not eq)}"
+				pure eq
+			Failure(msg) => do
 				putStrLn "Failure \{show try} \{msg}"
-			Timeout(_) =>
+				pure True
+			Timeout(_) => do
 				putStrLn "Timeout \{show try}"
+				pure True
 
-		search_step (try+1) config cpu
+		if continue then search_step (try+1) config cpu else pure ()
 
 	search : Bool -> Bits64 -> (Bits64, Bits64, Bits64, List Bits64) -> IO ()
 	search verbose limit (a,b,c,program) =
-		search_step 0 (NewConfig verbose limit) (NewCpu 0 [a,b,c] program limit)
+		search_step 0 (NewConfig verbose limit) (NewCpu 0 [a,b,c] program 0)
