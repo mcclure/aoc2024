@@ -34,7 +34,6 @@ main = do
 		Right t => pure t
 		Left s => die s
 
-	if verbose then let (_,_,_,program) = t in putStrLn "Program \{show program}" else pure () -- Verbose
 	let limit = cast limit
 	search verbose limit t
 
@@ -62,7 +61,9 @@ where
 
 		spec <- readFile arg
 		case spec of
-			Right x => pure (limit, x, verbose)     -- String
+			Right x => do
+				putStrLn "\{x}\n"
+				pure (limit, x, verbose)     -- String
 			Left x => die(show x) -- FileError
 
 	interpret_register : String -> Either String Bits64
@@ -214,8 +215,13 @@ where
 				else False
 
 	-- Combine two octal digits into one byte
-	octal_fold: Bits64 -> Bits64 -> Bits64
-	octal_fold a b = (.|.) (shiftL a 3) b
+	octal_string2: Bits64 -> List String -> String
+	octal_string2 n acc =
+		if n == 0 then joinBy "" acc
+		else let digit = mod n 8 in octal_string2 (div n 8) ("\{show digit}"::acc)
+
+	octal_string: Bits64 -> String
+	octal_string n = if n == 0 then "0" else octal_string2 n []
 
 
 	-- Notice: "results" List List Bits64 is an array of arrays of octal digits; return List Bits64 is an array of those same arrays but mashed into octal.
@@ -229,9 +235,9 @@ where
 
 				append <- case result of
 					Success(output) => do
-						putStrLn "TESTED A: \{show try} PROG: \{show cpu.prog} OUTPUT: \{show output} MATCHES?: \{show match}"
+						if config.verbose then putStrLn "TESTED A: \{show try} PROG: \{show cpu.prog} OUTPUT: \{show output} MATCHES?: \{show match}" else pure ()
 						let eq = listPrefixEq match output cpu.prog
-						putStrLn "\{show match}\t\{show output} append? \{show (eq)}"
+						putStrLn "\{show match}\t\{octal_string try}\t\{show output} append? \{show (eq)}"
 						pure eq
 					Failure(msg) => do
 						putStrLn "Failure \{show try} \{msg} skip"
@@ -264,8 +270,8 @@ where
 
 					-- Magic Idris incantation courtesy of typeswitch from Mastodon
 					-- I also have an implementation where I do this with a do in list context and a map, but this is funnier
-					putStrLn "  \{show digits}"
-					putStrLn "| \{show candidates} ..."
+					if config.verbose then putStrLn "  \{show digits}" else pure ()
+					if config.verbose then putStrLn "| \{show candidates} ..." else pure ()
 					let step_candidates = (.|.) <$> candidates <*> digits
 					putStrLn "= \{show step_candidates}\n"
 
