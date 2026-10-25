@@ -10,17 +10,18 @@ import Data.Vect
 import Data.Bits
 import Data.Fin
 
-record Cpu where
+record Cpu where -- State for executing a CPU
     constructor NewCpu
     ip : Bits64
     reg : Vect 3 Bits64
     prog : List Bits64
     steps : Bits64
 
-record Config where
+record Config where -- Constant values for entire program run
 	constructor NewConfig
 	verbose : Bool
 	limit : Bits64
+	gorp : List Bits64 -- Pre-reversed copy of program
 
 data Result =
 	Success(List Bits64)
@@ -236,8 +237,8 @@ where
 				append <- case result of
 					Success(output) => do
 						if config.verbose then putStrLn "TESTED A: \{show try} PROG: \{show cpu.prog} OUTPUT: \{show output} MATCHES?: \{show match}" else pure ()
-						let eq = listPrefixEq match output cpu.prog
-						putStrLn "\{show match}\t\{octal_string try}\t\{show output} append? \{show (eq)}"
+						let eq = listPrefixEq match output config.gorp
+						putStrLn "\{show match}\t\{octal_string try}\t\{show (reverse output)} append? \{show (eq)}"
 						pure eq
 					Failure(msg) => do
 						putStrLn "Failure \{show try} \{msg} skip"
@@ -290,4 +291,4 @@ where
 			_ =>
 				die "Program expansion is greater than 64 bits: \{show (limit*4)}"
 
-		search_digits [0] bits 0 (NewConfig verbose limit) (NewCpu 0 [a,b,c] program 0)
+		search_digits [0] bits 0 (NewConfig verbose limit (reverse program)) (NewCpu 0 [a,b,c] program 0)
