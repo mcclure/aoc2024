@@ -200,6 +200,9 @@ where
 		value::vec
 
 	-- True if two Lists are equal up to first n elements
+	-- Note: No inputs I used had a leftmost "0" in the program text.
+	-- There is a bug somewhere which I believe prevents an output with a leftmost 0 from being generated.
+	-- Fixing that may require changing the asserts here to returning True, False, False.
 	listPrefixEq : Eq a => Nat -> List a -> List a -> IO Bool
 	listPrefixEq n a b = do
 		if n == 0 then pure True else case (a, b) of
@@ -216,7 +219,7 @@ where
 	octal_fold a b = (.|.) (shiftL a 3) b
 
 
-	-- Notice: "results" List List Bits64 is an array of arrays of octets; return List Bits64 is an array of those same arrays but mashed into octets.
+	-- Notice: "results" List List Bits64 is an array of arrays of octal digits; return List Bits64 is an array of those same arrays but mashed into octal.
 	search_step : List (List Bits64) -> List Bits64 -> Nat -> Config -> Cpu -> IO (List Bits64)
 	search_step results candidates match config cpu =
 		case candidates of
@@ -243,18 +246,17 @@ where
 
 				search_step results rest match config cpu
 
-			-- TODO: map results list-to-octet
 			_ => pure <| reverse <| map (foldl octal_fold 0) results
 
 	search_digits : List Bits64 -> Fin 64 -> Nat -> Config -> Cpu -> IO ()
-	search_digits candidates digit_shift octets_match config cpu =
+	search_digits candidates digit_shift digits_match config cpu =
 		case candidates of -- Check for esearch failure
-			[] => die "Completed checking octet \{show digit_shift} (counting from right), and got an empty list of next candidates"
+			[] => die "Completed checking digit \{show digits_match} (counting from most significant), and got an empty list of next candidates"
 			_ => case digit_shift of
 				0 => putStrLn (show candidates) -- Check for search success
 				_ => do
-					let digit_shift = digit_shift-3 -- Step down one octet at a time
-					let octets_match = octets_match+1 -- Step up one match at a time
+					let digit_shift = digit_shift-3 -- Step down one octal digit at a time
+					let digits_match = digits_match+1 -- Step up one match at a time
 					let range = [0..7]
 
 					-- For digit_shift N make a list (0..7) and shift it left N bits
@@ -265,16 +267,16 @@ where
 					let step_candidates = (.|.) <$> candidates <*> digits
 
 					-- Filter the candidates, see which ones survive
-					step_results <- search_step [] step_candidates octets_match config cpu
+					step_results <- search_step [] step_candidates digits_match config cpu
 
 					-- Recurse
-					search_digits step_results digit_shift octets_match config cpu
+					search_digits step_results digit_shift digits_match config cpu
 
 	-- Entry point for search algorithm
 	search : Bool -> Bits64 -> (Bits64, Bits64, Bits64, List Bits64) -> IO ()
 	search verbose limit (a,b,c,program) = do
-		let octets = length program
-		bits <- case natToFin (cast (3*octets)) 64 of
+		let digits = length program
+		bits <- case natToFin (cast (3*digits)) 64 of -- Digits are octal
 			Just len => pure len
 			_ =>
 				die "Program expansion is greater than 64 bits: \{show (limit*4)}"
