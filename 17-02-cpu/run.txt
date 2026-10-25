@@ -1,3 +1,5 @@
 idris2 -o puzzle src/puzzle.idr && ./build/exec/puzzle 100 ../17-01-cpu/data/printA-7.txt
 
 cat scratch/digit.txt | perl -e 'while (<>) { last unless /\d/; $_ = oct($_); print "$_\n"; }' | ./build/exec/puzzle 1000 ../17-01-cpu/data/input.txt
+
+idris2 -o puzzle src/puzzle-digits.idr && ./build/exec/puzzle 1000 ../17-01-cpu/data/printA-7.txt

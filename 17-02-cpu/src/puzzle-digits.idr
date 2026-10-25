@@ -191,69 +191,86 @@ where
 				No _ => do
 					pure <| Success <| output -- Natural end of file -- NOTICE OUTPUT REVERSED
 
+	-- SOME UTILITIES REAL QUICK
+
 	-- Given a list vec, remove its first value and swap in value
 	swap0 : Bits64 -> Vect 3 Bits64 -> Vect 3 Bits64
 	swap0 value vec =
 		let _::vec = vec in
 		value::vec
 
-	search_step : List Bits64 -> List Bits64 -> Nat -> Bits64 -> Config -> Cpu -> IO (List Bits64)
-	search_step results candidates match idx config cpu =
+	-- True if two Lists are equal up to first n elements
+	listPrefixEq : Eq a => Nat -> List a -> List a -> IO Bool
+	listPrefixEq n a b = do
+		if n == 0 then pure True else case (a, b) of
+			([], []) => die "Matching prefix, both lists exhausted with \{show n} left"
+			(_, []) => die "Matching prefix, right list exhausted with \{show n} left"
+			([], _) => die "Matching prefix, left list exhausted with \{show n} left"
+			(a1::ar, b1::br) =>
+				if a1 == b1 then
+				listPrefixEq (minus n 1) ar br
+				else pure False
+
+	-- Combine two octal digits into one byte
+	octal_fold: Bits64 -> Bits64 -> Bits64
+	octal_fold a b = (.|.) (shiftL a 3) b
+
+
+	-- Notice: "results" List List Bits64 is an array of arrays of octets; return List Bits64 is an array of those same arrays but mashed into octets.
+	search_step : List (List Bits64) -> List Bits64 -> Nat -> Config -> Cpu -> IO (List Bits64)
+	search_step results candidates match config cpu =
 		case candidates of
 			try::rest => do
 				let cpu = { steps := config.limit } cpu
 				let cpu = { reg $= swap0 try } cpu
 				result <- step [] cpu
 
-				continue <- case result of
+				append: Maybe (List Bits64) <- case result of
 					Success(output) => do
-						let eq = output /= cpu.prog
-						putStrLn "\{show idx}\t\{show output} eq? \{show (not eq)}"
-						pure eq
+						eq <- listPrefixEq match output cpu.prog
+						putStrLn "\{show match}\t\{show output} append? \{show (eq)}"
+						pure <| if eq then Just output else Nothing
 					Failure(msg) => do
-						putStrLn "Failure \{show try} \{msg}"
-						pure True
+						putStrLn "Failure \{show try} \{msg} skip"
+						pure Nothing
 					Timeout(_) => do
-						putStrLn "Timeout \{show try}"
-						pure True
+						putStrLn "Timeout \{show try} skipping"
+						pure Nothing
 
-				-- results <- if continue then pure results else pure (try::results)
+				results <- case append of
+					Just output => pure results -- output::results
+					Nothing => pure results
 
-				if continue then search_step results rest match (idx+1) config cpu else pure <| reverse results
+				search_step results rest match config cpu
 
-			_ => pure <| reverse results -- EOL
+			-- TODO: map results list-to-octet
+			_ => pure <| reverse <| map (foldl octal_fold 0) results
 
+	search_digits : List Bits64 -> Fin 64 -> Nat -> Config -> Cpu -> IO ()
+	search_digits candidates digit_shift octets_match config cpu =
+		case candidates of -- Check for esearch failure
+			[] => die "Completed checking octet \{show digit_shift} (counting from right), and got an empty list of next candidates"
+			_ => case digit_shift of
+				0 => putStrLn (show candidates) -- Check for search success
+				_ => do
+					let digit_shift = digit_shift-3 -- Step down one octet at a time
+					let octets_match = octets_match+1 -- Step up one match at a time
+					let range = [0..7]
 
+					-- For digit_shift N make a list (0..7) and shift it left N bits
+					let digits = map (\digit => let digit = the Bits64 (cast digit) in shiftL digit (cast digit_shift)) range
 
-	search_digits : List Bits64 -> Fin 64 -> Config -> Cpu -> IO ()
-	search_digits candidates digit_shift config cpu =
-		case digit_shift of
-			0 => putStrLn (show candidates)
-			_ => do
-				let digit_idx = digit_shift-3 -- Step down one octet at a time
-				let range = [0..7]
-				let digits = map (\digit => let digit = the Bits64 (cast digit) in shiftL digit (cast digit_idx)) range
+					-- Magic Idris incantation courtesy of typeswitch from Mastodon
+					-- I also have an implementation where I do this with a do in list context and a map, but this is funnier
+					let step_candidates = (.|.) <$> candidates <*> digits
 
-				-- AT THIS POINT IN THE FILE, "candidates" IS A LIST OF BITS64s AND SO IS "digits"
-				let next_candidates : List (Bits64, Bits64) = do
-					a <- candidates
-					b <- digits
-					pure (a,b)
-				let () = next_candidates
---				let digits = ?b -- map (\digit => shiftL digit digit_idx) range 
-				?a
+					-- Filter the candidates, see which ones survive
+					step_results <- search_step [] step_candidates octets_match config cpu
 
-		-- let over = allFins 8
---		let new = map over (\i => shiftL (the Bits64 i) digit)
-		--let new = for (the (List (Fin 8)) (allFins 8)) (\i => shiftL (the Bits64 1) 3)
-		-- candidates <- case candidates of
-		-- 	[] => pure [] -- new
-		-- 	_ => pure [] -- concatMap candidates (\c => map new (\n => | n c))
-		-- results <- search_step [] candidates len (digit+1) config cpu
-		-- case results of
-		-- 	[] => putStrLn "abcd"
-		-- 	x => putStrLn "abcd"
+					-- Recurse
+					search_digits step_results digit_shift octets_match config cpu
 
+	-- Entry point for search algorithm
 	search : Bool -> Bits64 -> (Bits64, Bits64, Bits64, List Bits64) -> IO ()
 	search verbose limit (a,b,c,program) = do
 		let octets = length program
@@ -262,4 +279,4 @@ where
 			_ =>
 				die "Program expansion is greater than 64 bits: \{show (limit*4)}"
 
-		search_digits [0] bits (NewConfig verbose limit) (NewCpu 0 [a,b,c] program 0)
+		search_digits [0] bits 0 (NewConfig verbose limit) (NewCpu 0 [a,b,c] program 0)
