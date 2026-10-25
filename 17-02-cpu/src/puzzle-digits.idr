@@ -1,5 +1,4 @@
--- Like cpu emulator, but scans for an assignment of register A
---     that causes the program to become a quine.
+-- Like cpu emulator, but does a digit-by-digit search for a program that becomes a quine.
 -- Usage: puzzle [-v] maxsteps filename
 
 import System
@@ -203,16 +202,16 @@ where
 	-- Note: No inputs I used had a leftmost "0" in the program text.
 	-- There is a bug somewhere which I believe prevents an output with a leftmost 0 from being generated.
 	-- Fixing that may require changing the asserts here to returning True, False, False.
-	listPrefixEq : Eq a => Nat -> List a -> List a -> IO Bool
+	listPrefixEq : Eq a => Nat -> List a -> List a -> Bool
 	listPrefixEq n a b = do
-		if n == 0 then pure True else case (a, b) of
-			([], []) => die "Matching prefix, both lists exhausted with \{show n} left"
-			(_, []) => die "Matching prefix, right list exhausted with \{show n} left"
-			([], _) => die "Matching prefix, left list exhausted with \{show n} left"
+		if n == 0 then True else case (a, b) of
+			([], []) => True -- die "Matching prefix, both lists exhausted with \{show n} left"
+			(_, []) => False -- die "Matching prefix, right list exhausted with \{show n} left"
+			([], _) => False -- die "Matching prefix, left list exhausted with \{show n} left"
 			(a1::ar, b1::br) =>
 				if a1 == b1 then
 				listPrefixEq (minus n 1) ar br
-				else pure False
+				else False
 
 	-- Combine two octal digits into one byte
 	octal_fold: Bits64 -> Bits64 -> Bits64
@@ -230,7 +229,8 @@ where
 
 				append: Maybe (List Bits64) <- case result of
 					Success(output) => do
-						eq <- listPrefixEq match output cpu.prog
+						putStrLn "TESTED A: \{show try} PROG: \{show cpu.prog} OUTPUT: \{show output} MATCHES?: \{show match}"
+						let eq = listPrefixEq match output cpu.prog
 						putStrLn "\{show match}\t\{show output} append? \{show (eq)}"
 						pure <| if eq then Just output else Nothing
 					Failure(msg) => do
@@ -241,12 +241,14 @@ where
 						pure Nothing
 
 				results <- case append of
-					Just output => pure results -- output::results
+					Just output => pure (output::results)
 					Nothing => pure results
 
 				search_step results rest match config cpu
 
-			_ => pure <| reverse <| map (foldl octal_fold 0) results
+			_ => do
+				putStrLn "-------- Pass done, result count: \{show (length results)}\n"
+				pure <| reverse <| map (foldl octal_fold 0) results
 
 	search_digits : List Bits64 -> Fin 64 -> Nat -> Config -> Cpu -> IO ()
 	search_digits candidates digit_shift digits_match config cpu =
@@ -264,7 +266,10 @@ where
 
 					-- Magic Idris incantation courtesy of typeswitch from Mastodon
 					-- I also have an implementation where I do this with a do in list context and a map, but this is funnier
+					putStrLn "  \{show digits}"
+					putStrLn "| \{show candidates} ..."
 					let step_candidates = (.|.) <$> candidates <*> digits
+					putStrLn "= \{show step_candidates}\n"
 
 					-- Filter the candidates, see which ones survive
 					step_results <- search_step [] step_candidates digits_match config cpu
