@@ -219,7 +219,7 @@ where
 
 
 	-- Notice: "results" List List Bits64 is an array of arrays of octal digits; return List Bits64 is an array of those same arrays but mashed into octal.
-	search_step : List (List Bits64) -> List Bits64 -> Nat -> Config -> Cpu -> IO (List Bits64)
+	search_step : List Bits64 -> List Bits64 -> Nat -> Config -> Cpu -> IO (List Bits64)
 	search_step results candidates match config cpu =
 		case candidates of
 			try::rest => do
@@ -227,28 +227,26 @@ where
 				let cpu = { reg $= swap0 try } cpu
 				result <- step [] cpu
 
-				append: Maybe (List Bits64) <- case result of
+				append <- case result of
 					Success(output) => do
 						putStrLn "TESTED A: \{show try} PROG: \{show cpu.prog} OUTPUT: \{show output} MATCHES?: \{show match}"
 						let eq = listPrefixEq match output cpu.prog
 						putStrLn "\{show match}\t\{show output} append? \{show (eq)}"
-						pure <| if eq then Just output else Nothing
+						pure eq
 					Failure(msg) => do
 						putStrLn "Failure \{show try} \{msg} skip"
-						pure Nothing
+						pure False
 					Timeout(_) => do
 						putStrLn "Timeout \{show try} skipping"
-						pure Nothing
+						pure False
 
-				results <- case append of
-					Just output => pure (output::results)
-					Nothing => pure results
+				let results = if append then try::results else results
 
 				search_step results rest match config cpu
 
 			_ => do
 				putStrLn "-------- Pass done, result count: \{show (length results)}\n"
-				pure <| reverse <| map (foldl octal_fold 0) results
+				pure <| reverse results
 
 	search_digits : List Bits64 -> Fin 64 -> Nat -> Config -> Cpu -> IO ()
 	search_digits candidates digit_shift digits_match config cpu =
